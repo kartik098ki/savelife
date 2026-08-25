@@ -1,3 +1,6 @@
+// 🏥 Hospital Directory Screen - Sector 128 Noida Verified Emergency Hospitals
+// Verified 24/7 Trauma Centers, live ICU Bed counters, on-duty doctors aur hospital photos
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,8 +11,22 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
+  Linking,
 } from 'react-native';
-import { Search, Building2, Phone, Star, BedDouble, ShieldCheck, MapPin, X } from 'lucide-react-native';
+import {
+  Search,
+  Building2,
+  Phone,
+  Star,
+  BedDouble,
+  ShieldCheck,
+  MapPin,
+  X,
+  UserCheck,
+  Clock,
+  Navigation,
+} from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { useBookingStore } from '../store/useBookingStore';
 import { Hospital, getNearbyHospitalsMock } from '../services/mockDataService';
@@ -40,7 +57,9 @@ export const HospitalListScreen: React.FC = () => {
   const filteredHospitals = hospitals.filter((h) => {
     const matchesSearch =
       h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      h.address.toLowerCase().includes(searchQuery.toLowerCase());
+      h.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      h.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      h.specialties.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
 
@@ -53,20 +72,24 @@ export const HospitalListScreen: React.FC = () => {
     return true;
   });
 
+  const handleCallHospital = (phoneNumber: string) => {
+    Linking.openURL(`tel:${phoneNumber.replace(/\s+/g, '')}`);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Header */}
+        {/* 🏢 Header Section */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Emergency Hospital Directory</Text>
-          <Text style={styles.headerSubtitle}>Verified 24/7 Trauma Centers & ICU Facilities</Text>
+          <Text style={styles.headerSubtitle}>Sector 128, Noida • Verified 24/7 Trauma Centers & ICU Units</Text>
 
-          {/* Search Box */}
+          {/* 🔍 Search Input Box */}
           <View style={styles.searchBox}>
             <Search size={18} color={COLORS.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by hospital name or specialty..."
+              placeholder="Search by hospital, doctor or specialty..."
               placeholderTextColor={COLORS.textPlaceholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -78,7 +101,7 @@ export const HospitalListScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Category Filter Chips */}
+          {/* 🏷️ Filter Categories */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -98,7 +121,7 @@ export const HospitalListScreen: React.FC = () => {
               onPress={() => setSelectedFilter('icu')}
             >
               <Text style={[styles.filterText, selectedFilter === 'icu' && styles.filterTextActive]}>
-                🛏️ ICU Available ({'>'}10)
+                🛏️ High ICU Bed Capacity ({'>'}10)
               </Text>
             </TouchableOpacity>
 
@@ -122,7 +145,7 @@ export const HospitalListScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Hospital List */}
+        {/* 📋 Hospital Cards List with Photos & Doctor Info */}
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
@@ -130,55 +153,93 @@ export const HospitalListScreen: React.FC = () => {
           {loading ? (
             <View style={styles.loaderBox}>
               <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.loaderText}>Querying emergency network...</Text>
+              <Text style={styles.loaderText}>Fetching live ICU & doctor rosters...</Text>
             </View>
           ) : (
             filteredHospitals.map((hospital) => (
               <View key={hospital.id} style={styles.hospitalCard}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.hospitalIcon}>
-                    <Building2 size={22} color={COLORS.primaryDark} />
+                {/* 🖼️ Hospital Photo & Header */}
+                <View style={styles.photoContainer}>
+                  <Image
+                    source={{ uri: hospital.imageUrl }}
+                    style={styles.hospitalImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.photoOverlayGradient} />
+                  
+                  {/* Floating Rating Badge */}
+                  <View style={styles.floatingRating}>
+                    <Star size={12} color="#F59E0B" fill="#F59E0B" />
+                    <Text style={styles.floatingRatingText}>{hospital.rating.toFixed(1)}</Text>
+                    <Text style={styles.floatingRatingCount}>({hospital.userRatingsTotal})</Text>
                   </View>
 
-                  <View style={styles.headerInfo}>
-                    <Text style={styles.hospitalName}>{hospital.name}</Text>
-                    <Text style={styles.hospitalAddress} numberOfLines={1}>
-                      {hospital.address}
-                    </Text>
-                  </View>
-
-                  <View style={styles.ratingBadge}>
-                    <Star size={11} color={COLORS.star} fill={COLORS.star} />
-                    <Text style={styles.ratingValue}>{hospital.rating.toFixed(1)}</Text>
+                  {/* Floating Distance Pill */}
+                  <View style={styles.floatingDistance}>
+                    <MapPin size={11} color="#FFFFFF" />
+                    <Text style={styles.floatingDistanceText}>{hospital.distanceKm} km • {hospital.etaMinutes}m</Text>
                   </View>
                 </View>
 
-                {/* Specialties Tag Row */}
-                <View style={styles.specialtiesRow}>
-                  {hospital.specialties.map((spec, i) => (
-                    <View key={i} style={styles.specialtyTag}>
-                      <Text style={styles.specialtyTagText}>{spec}</Text>
+                {/* 📋 Hospital Body Info */}
+                <View style={styles.cardBody}>
+                  <Text style={styles.hospitalName}>{hospital.name}</Text>
+                  <Text style={styles.hospitalAddress} numberOfLines={2}>
+                    {hospital.address}
+                  </Text>
+
+                  {/* 👨‍⚕️ On-Duty Doctor Card Strip */}
+                  <View style={styles.doctorStrip}>
+                    <View style={styles.doctorAvatarCircle}>
+                      <UserCheck size={16} color={COLORS.primaryDark} />
                     </View>
-                  ))}
-                </View>
-
-                {/* Status & CTA Row */}
-                <View style={styles.cardFooter}>
-                  <View style={styles.bedInfo}>
-                    <BedDouble size={14} color={COLORS.primary} />
-                    <Text style={styles.bedInfoText}>
-                      <Text style={{ fontWeight: '800' }}>{hospital.icuBedsAvailable}</Text> ICU Beds Available
-                    </Text>
+                    <View style={styles.doctorInfoCol}>
+                      <Text style={styles.doctorNameText}>
+                        {hospital.doctorName} <Text style={styles.onDutyBadge}>• ON DUTY</Text>
+                      </Text>
+                      <Text style={styles.doctorSpecialtyText}>
+                        {hospital.doctorSpecialty} • {hospital.emergencyDoctorsCount} doctors on shift
+                      </Text>
+                    </View>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.bookAmbulanceBtn}
-                    activeOpacity={0.85}
-                    onPress={() => startBookingFlow(hospital)}
-                  >
-                    <ShieldCheck size={14} color="#FFFFFF" />
-                    <Text style={styles.bookAmbulanceBtnText}>Book Ambulance</Text>
-                  </TouchableOpacity>
+                  {/* 🏷️ Specialties Row */}
+                  <View style={styles.specialtiesRow}>
+                    {hospital.specialties.map((spec, i) => (
+                      <View key={i} style={styles.specialtyTag}>
+                        <Text style={styles.specialtyTagText}>{spec}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* ⚡ Status & Action Buttons */}
+                  <View style={styles.cardFooter}>
+                    <View style={styles.bedInfo}>
+                      <BedDouble size={15} color={COLORS.primary} />
+                      <Text style={styles.bedInfoText}>
+                        <Text style={{ fontWeight: '800', color: COLORS.primaryDark }}>{hospital.icuBedsAvailable}</Text> ICU Beds
+                      </Text>
+                    </View>
+
+                    <View style={styles.actionButtonsRow}>
+                      <TouchableOpacity
+                        style={styles.callBtn}
+                        activeOpacity={0.85}
+                        onPress={() => handleCallHospital(hospital.phone)}
+                      >
+                        <Phone size={15} color={COLORS.textPrimary} />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.bookAmbulanceBtn}
+                        activeOpacity={0.85}
+                        onPress={() => startBookingFlow(hospital)}
+                      >
+                        <ShieldCheck size={15} color="#FFFFFF" />
+                        <Text style={styles.bookAmbulanceBtnText}>Book Ambulance</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               </View>
             ))
@@ -201,7 +262,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
     backgroundColor: '#FFFFFF',
@@ -212,10 +273,10 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 2,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   searchBox: {
     height: 44,
@@ -231,18 +292,18 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textPrimary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   filterScroll: {
     gap: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 14,
     backgroundColor: COLORS.surfaceLight,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
@@ -252,97 +313,162 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   filterText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: COLORS.textSecondary,
   },
   filterTextActive: {
     color: COLORS.primaryDark,
-    fontWeight: '700',
   },
   listContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 90,
+    gap: 16,
   },
   loaderBox: {
-    paddingVertical: 32,
+    paddingVertical: 40,
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
   },
   loaderText: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.textSecondary,
   },
   hospitalCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 20,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
-    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  cardHeader: {
+  photoContainer: {
+    width: '100%',
+    height: 140,
+    position: 'relative',
+    backgroundColor: '#E2E8F0',
+  },
+  hospitalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoOverlayGradient: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.25)',
+  },
+  floatingRating: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  hospitalIcon: {
-    width: 44,
-    height: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
+    gap: 4,
   },
-  headerInfo: {
-    flex: 1,
-  },
-  hospitalName: {
-    fontSize: 15,
+  floatingRatingText: {
+    fontSize: 11,
     fontWeight: '800',
     color: COLORS.textPrimary,
+  },
+  floatingRatingCount: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+  },
+  floatingDistance: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  floatingDistanceText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cardBody: {
+    padding: 14,
+  },
+  hospitalName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 4,
   },
   hospitalAddress: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    lineHeight: 16,
+    marginBottom: 10,
   },
-  ratingBadge: {
+  doctorStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF9E6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 2,
+    backgroundColor: '#F0FDF4',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    marginBottom: 10,
+    gap: 10,
   },
-  ratingValue: {
-    fontSize: 11,
+  doctorAvatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doctorInfoCol: {
+    flex: 1,
+  },
+  doctorNameText: {
+    fontSize: 12,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: COLORS.primaryDark,
+  },
+  onDutyBadge: {
+    fontSize: 10,
+    color: '#15803D',
+    fontWeight: '800',
+  },
+  doctorSpecialtyText: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   specialtiesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginVertical: 10,
+    marginBottom: 12,
   },
   specialtyTag: {
     backgroundColor: COLORS.surfaceLight,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   specialtyTagText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
+    fontSize: 10,
     fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -355,24 +481,40 @@ const styles = StyleSheet.create({
   bedInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   bedInfoText: {
     fontSize: 12,
-    color: COLORS.primaryDark,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  callBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.surfaceLight,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bookAmbulanceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     backgroundColor: COLORS.alertRed,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 19,
+    gap: 6,
     shadowColor: COLORS.alertRed,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
     elevation: 3,
   },
   bookAmbulanceBtnText: {

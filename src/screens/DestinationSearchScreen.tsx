@@ -1,3 +1,6 @@
+// 🔍 Destination Search Screen - Search hospitals in Sector 128, Noida
+// Live filtering, quick emergency tags, hospital photos aur doctor on-duty status
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -9,7 +12,7 @@ import {
   ActivityIndicator,
   Platform,
   SafeAreaView,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -24,12 +27,13 @@ import {
   HeartPulse,
   ShieldAlert,
   Flame,
-  Zap
+  Zap,
 } from 'lucide-react-native';
 import { Hospital, getNearbyHospitalsMock } from '../services/mockDataService';
 import { fetchNearbyHospitals } from '../services/googleMapsService';
 import { useBookingStore } from '../store/useBookingStore';
 import { COLORS } from '../constants/colors';
+import { HospitalItem } from '../components/booking/HospitalItem';
 
 export const DestinationSearchScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,10 +44,10 @@ export const DestinationSearchScreen: React.FC = () => {
   const { pickupLocation, startBookingFlow, setCurrentScreen } = useBookingStore();
 
   const QUICK_TAGS = [
-    { id: '1', label: 'Nearest Hospital', icon: Zap, term: 'Nearest' },
+    { id: '1', label: 'Jaypee (Sec 128)', icon: Zap, term: 'Jaypee' },
     { id: '2', label: 'Trauma Center', icon: ShieldAlert, term: 'Trauma' },
-    { id: '3', label: 'Cardiac Unit', icon: HeartPulse, term: 'Cardiac' },
-    { id: '4', label: 'Burn Care', icon: Flame, term: 'Burn' },
+    { id: '3', label: 'Cardiac Care', icon: HeartPulse, term: 'Cardiac' },
+    { id: '4', label: 'ICU Available', icon: BedDouble, term: 'Hospital' },
   ];
 
   useEffect(() => {
@@ -77,43 +81,44 @@ export const DestinationSearchScreen: React.FC = () => {
     setCurrentScreen('hospital_select');
   };
 
-  const filteredHospitals = hospitals.filter(h => {
+  const filteredHospitals = hospitals.filter((h) => {
     const query = searchQuery.toLowerCase();
     return (
       h.name.toLowerCase().includes(query) ||
       h.address.toLowerCase().includes(query) ||
-      (h.specialties && h.specialties.some(s => s.toLowerCase().includes(query)))
+      h.doctorName.toLowerCase().includes(query) ||
+      h.specialties.some((s) => s.toLowerCase().includes(query))
     );
   });
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        style={styles.container} 
+      <KeyboardAvoidingView
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
+        {/* 🔙 Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => setCurrentScreen('home')}
             activeOpacity={0.7}
           >
-            <ArrowLeft stroke={COLORS.textPrimary || '#1E293B'} width={24} height={24} />
+            <ArrowLeft size={22} color={COLORS.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Select Destination</Text>
+          <Text style={styles.headerTitle}>Select Destination Hospital</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        {/* Search Input Box */}
+        {/* 🔍 Search Input Box */}
         <View style={styles.searchContainer}>
           <View style={styles.searchInputWrapper}>
-            <Search stroke={COLORS.textMuted || '#8A94A6'} width={20} height={20} style={styles.searchIcon} />
+            <Search size={20} color={COLORS.textMuted} style={styles.searchIcon} />
             <TextInput
               ref={inputRef}
               style={styles.searchInput}
-              placeholder="Search hospital, location, address..."
-              placeholderTextColor={COLORS.textMuted || '#8A94A6'}
+              placeholder="Search Sector 128 hospital, doctor, specialty..."
+              placeholderTextColor={COLORS.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus={true}
@@ -121,29 +126,29 @@ export const DestinationSearchScreen: React.FC = () => {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton} activeOpacity={0.7}>
-                <X stroke={COLORS.textMuted || '#8A94A6'} width={18} height={18} />
+                <X size={18} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
-        {/* Quick Suggestion Tags */}
+        {/* 🏷️ Quick Suggestion Tags */}
         <View style={styles.tagsContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tagsScrollContent}
           >
             {QUICK_TAGS.map((tag) => {
               const Icon = tag.icon;
               return (
-                <TouchableOpacity 
-                  key={tag.id} 
+                <TouchableOpacity
+                  key={tag.id}
                   style={styles.tagButton}
                   onPress={() => setSearchQuery(tag.term)}
                   activeOpacity={0.7}
                 >
-                  <Icon stroke={COLORS.primary || '#0E9F6E'} width={16} height={16} />
+                  <Icon size={14} color={COLORS.primary} />
                   <Text style={styles.tagText}>{tag.label}</Text>
                 </TouchableOpacity>
               );
@@ -151,15 +156,16 @@ export const DestinationSearchScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Results List */}
+        {/* 📋 Results List */}
         <ScrollView style={styles.resultsContainer} contentContainerStyle={styles.resultsScrollContent}>
           <Text style={styles.sectionTitle}>
-            {searchQuery ? 'Search Results' : 'Nearby Hospitals'}
+            {searchQuery ? `Matching Hospitals (${filteredHospitals.length})` : 'Verified Hospitals near Sector 128'}
           </Text>
-          
+
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.primary || '#0E9F6E'} />
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Locating emergency centers...</Text>
             </View>
           ) : filteredHospitals.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -167,49 +173,11 @@ export const DestinationSearchScreen: React.FC = () => {
             </View>
           ) : (
             filteredHospitals.map((hospital) => (
-              <TouchableOpacity 
-                key={hospital.id} 
-                style={styles.hospitalCard}
+              <HospitalItem
+                key={hospital.id}
+                hospital={hospital}
                 onPress={() => handleHospitalSelect(hospital)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.cardContent}>
-                  <View style={styles.hospitalIconContainer}>
-                    <Building2 stroke={COLORS.primary || '#0E9F6E'} width={24} height={24} />
-                  </View>
-                  <View style={styles.hospitalInfo}>
-                    <View style={styles.hospitalHeaderRow}>
-                      <Text style={styles.hospitalName} numberOfLines={1}>{hospital.name}</Text>
-                      {hospital.emergencyAvailable && (
-                        <View style={styles.availableDot} />
-                      )}
-                    </View>
-                    <Text style={styles.hospitalAddress} numberOfLines={1}>{hospital.address}</Text>
-                    
-                    <View style={styles.badgesRow}>
-                      <View style={styles.badge}>
-                        <Star fill={COLORS.alertRed || '#E53935'} stroke={COLORS.alertRed || '#E53935'} width={12} height={12} />
-                        <Text style={styles.badgeText}>{hospital.rating || '4.5'}</Text>
-                      </View>
-                      <View style={styles.badge}>
-                        <MapPin stroke={COLORS.textMuted || '#8A94A6'} width={12} height={12} />
-                        <Text style={styles.badgeText}>{hospital.distanceKm} km</Text>
-                      </View>
-                      <View style={styles.badge}>
-                        <Clock stroke={COLORS.textMuted || '#8A94A6'} width={12} height={12} />
-                        <Text style={styles.badgeText}>{hospital.etaMinutes} min</Text>
-                      </View>
-                      <View style={styles.badge}>
-                        <BedDouble stroke={COLORS.textMuted || '#8A94A6'} width={12} height={12} />
-                        <Text style={styles.badgeText}>{hospital.icuBedsAvailable || '5'} ICU</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.chevronContainer}>
-                    <ChevronRight stroke={COLORS.textMuted || '#8A94A6'} width={20} height={20} />
-                  </View>
-                </View>
-              </TouchableOpacity>
+              />
             ))
           )}
         </ScrollView>
@@ -225,184 +193,109 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E3E8EC',
+    borderBottomColor: COLORS.divider,
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
   },
   searchContainer: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    height: 46,
     borderWidth: 1,
-    borderColor: '#E3E8EC',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderColor: COLORS.cardBorder,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#1E293B',
-    height: '100%',
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
   },
   clearButton: {
-    padding: 6,
+    padding: 4,
   },
   tagsContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E3E8EC',
+    marginBottom: 8,
   },
   tagsScrollContent: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 8,
   },
   tagButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EAF6F0',
+    backgroundColor: COLORS.surfaceLight,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
     gap: 6,
   },
   tagText: {
-    color: '#0E9F6E',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
   },
   resultsContainer: {
     flex: 1,
   },
   resultsScrollContent: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 12,
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+    marginVertical: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   loadingContainer: {
-    padding: 40,
+    paddingVertical: 40,
     alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
   },
   emptyContainer: {
-    padding: 40,
+    paddingVertical: 40,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
-    color: '#8A94A6',
-    textAlign: 'center',
-  },
-  hospitalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E3E8EC',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  hospitalIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EAF6F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  hospitalInfo: {
-    flex: 1,
-  },
-  hospitalHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  hospitalName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginRight: 8,
-  },
-  availableDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0E9F6E',
-  },
-  hospitalAddress: {
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E3E8EC',
-    gap: 4,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#64748B',
-  },
-  chevronContainer: {
-    marginLeft: 8,
+    fontSize: 13,
+    color: COLORS.textMuted,
   },
 });

@@ -1,3 +1,6 @@
+// 📍 Location Service - GPS aur Live Location tracking
+// User ki live coordinates aur address fetch karta hai (Default: Sector 128, Noida)
+
 import * as Location from 'expo-location';
 import { reverseGeocodeAddress } from './googleMapsService';
 
@@ -10,18 +13,18 @@ export interface UserLocation {
   address: string;
 }
 
-// Default fallback coordinates (Delhi) matching the spec screenshot
+// 🏢 Default Location - Sector 128, Noida (Jaypee Greens Wish Town)
 export const DEFAULT_LOCATION: UserLocation = {
-  latitude: 28.6139,
-  longitude: 77.2090,
+  latitude: 28.5130,
+  longitude: 77.3780,
   accuracy: 10,
   heading: 45,
   speed: 0,
-  address: '136, Pocket A 2, New Kondli, Kondli, Delhi, 110096',
+  address: 'Tower 4, Jaypee Greens Wish Town, Sector 128, Noida, UP 201304',
 };
 
 /**
- * Requests location permission and gets current position
+ * 📍 Get Current Location - User ki current GPS position fetch karta hai
  */
 export async function getCurrentUserLocation(): Promise<UserLocation> {
   try {
@@ -50,13 +53,13 @@ export async function getCurrentUserLocation(): Promise<UserLocation> {
       address,
     };
   } catch (error) {
-    console.warn('Location retrieval error, using default coordinates:', error);
+    console.warn('Location retrieval error, using Sector 128 coordinates:', error);
     return DEFAULT_LOCATION;
   }
 }
 
 /**
- * Subscribes to live position updates
+ * 🛰️ Start Location Updates - Real-time continuous position tracker
  */
 export async function startLocationUpdates(
   onUpdate: (location: UserLocation) => void
@@ -93,7 +96,7 @@ export async function startLocationUpdates(
 
     return sub;
   } catch (error) {
-    console.warn('watchPositionAsync not supported, returning mock watcher:', error);
+    console.warn('watchPositionAsync fallback to default location:', error);
     onUpdate(DEFAULT_LOCATION);
     return { remove: () => {} };
   }

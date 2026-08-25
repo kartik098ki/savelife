@@ -1,3 +1,6 @@
+// 🤖 AI Emergency Assistant Screen - NVIDIA NIM LLM Powered
+// Emergency triage, voice STT/TTS, CPR metronome, aur Sector 128 hospital recommendations
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -30,6 +33,7 @@ import { useBookingStore } from '../store/useBookingStore';
 import { ChatBubble } from '../components/ai/ChatBubble';
 import { Hospital } from '../services/mockDataService';
 import { soundService } from '../services/soundService';
+import { EtherealOrb } from '../components/common/EtherealOrb';
 
 export const AiAssistantScreen: React.FC = () => {
   const { messages, isLoading, quickPrompts, sendMessage, resetChat } = useChatStore();
@@ -49,7 +53,7 @@ export const AiAssistantScreen: React.FC = () => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 150);
 
-    // Speak last assistant message
+    // 🔊 Speak last assistant message
     const lastMsg = messages[messages.length - 1];
     if (lastMsg && lastMsg.sender === 'assistant' && lastMsg.text) {
       soundService.speakText(lastMsg.text);
@@ -150,7 +154,7 @@ export const AiAssistantScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
-        {/* Header */}
+        {/* 🤖 Header with Glowing Ethereal AI Avatar */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backBtn}
@@ -160,15 +164,19 @@ export const AiAssistantScreen: React.FC = () => {
             <ArrowLeft size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
 
+          <EtherealOrb size={40}>
+            <Sparkles size={18} color="#FFFFFF" />
+          </EtherealOrb>
+
           <View style={styles.headerTitleCol}>
             <View style={styles.titleBadgeRow}>
               <Text style={styles.headerTitle}>SaveLife Medical AI</Text>
               <View style={styles.liveAiBadge}>
-                <Sparkles size={10} color="#FFFFFF" />
+                <Sparkles size={9} color="#FFFFFF" />
                 <Text style={styles.liveAiBadgeText}>NVIDIA NIM</Text>
               </View>
             </View>
-            <Text style={styles.headerSubtitle}>24/7 Emergency Triage & Voice Guidance</Text>
+            <Text style={styles.headerSubtitle}>24/7 Triage & Voice First-Aid</Text>
           </View>
 
           <TouchableOpacity
@@ -180,7 +188,7 @@ export const AiAssistantScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* CPR Metronome Live Emergency Tool */}
+        {/* 💓 CPR Metronome Live Emergency Tool */}
         <View
           style={[
             styles.metronomeBanner,
@@ -236,7 +244,7 @@ export const AiAssistantScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Quick Triage Prompt Chips */}
+        {/* ⚡ Quick Triage Prompt Chips */}
         <View style={styles.quickPromptsWrapper}>
           <ScrollView
             horizontal
@@ -256,7 +264,7 @@ export const AiAssistantScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Chat Message List */}
+        {/* 💬 Chat Messages List */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -264,23 +272,22 @@ export const AiAssistantScreen: React.FC = () => {
           renderItem={({ item }) => (
             <ChatBubble
               message={item}
-              onBookHospital={handleDirectBookFromAi}
+              onSelectHospital={handleDirectBookFromAi}
             />
           )}
           contentContainerStyle={styles.chatListContent}
-          showsVerticalScrollIndicator={false}
           ListFooterComponent={
             isLoading ? (
-              <View style={styles.typingIndicatorBox}>
+              <View style={styles.loadingBubble}>
                 <ActivityIndicator size="small" color={COLORS.primary} />
-                <Text style={styles.typingText}>SaveLife AI is analyzing emergency symptoms...</Text>
+                <Text style={styles.loadingText}>NVIDIA NIM assessing emergency vitals...</Text>
               </View>
             ) : null
           }
         />
 
-        {/* Voice & Text Input Bar */}
-        <View style={styles.inputContainer}>
+        {/* ⌨️ Bottom Voice & Text Input Bar */}
+        <View style={styles.inputBar}>
           <TouchableOpacity
             style={[styles.micBtn, isRecording && styles.micBtnRecording]}
             activeOpacity={0.8}
@@ -289,21 +296,25 @@ export const AiAssistantScreen: React.FC = () => {
             {isRecording ? (
               <MicOff size={18} color="#FFFFFF" />
             ) : (
-              <Mic size={18} color={COLORS.secondaryBlue} />
+              <Mic size={18} color={COLORS.primaryDark} />
             )}
           </TouchableOpacity>
 
           <TextInput
-            style={styles.input}
-            placeholder={isRecording ? 'Listening to voice...' : 'Describe emergency or ask for ICU...'}
+            style={styles.textInput}
+            placeholder={isRecording ? 'Listening to voice...' : 'Describe patient symptoms, age, pain...'}
             placeholderTextColor={COLORS.textPlaceholder}
             value={inputVal}
             onChangeText={setInputVal}
             onSubmitEditing={handleSend}
+            returnKeyType="send"
           />
 
           <TouchableOpacity
-            style={[styles.sendBtn, !inputVal.trim() && styles.sendBtnDisabled]}
+            style={[
+              styles.sendBtn,
+              !inputVal.trim() && styles.sendBtnDisabled,
+            ]}
             activeOpacity={0.8}
             onPress={handleSend}
             disabled={!inputVal.trim()}
@@ -323,22 +334,22 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
-    backgroundColor: '#FFFFFF',
     gap: 10,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -360,7 +371,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#0284C7',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
@@ -373,11 +384,12 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 11,
     color: COLORS.textSecondary,
+    marginTop: 1,
   },
   resetBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -386,18 +398,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFF1F2',
-    borderBottomWidth: 1,
-    borderBottomColor: '#FFE4E6',
+    backgroundColor: '#FEF2F2',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FECACA',
   },
   metronomeBannerActive: {
     backgroundColor: COLORS.alertRed,
-    borderBottomColor: COLORS.alertRedHover,
+    borderBottomColor: COLORS.alertRed,
   },
   metronomeFlash: {
-    backgroundColor: '#FF5252',
+    backgroundColor: '#991B1B',
   },
   metronomeLeft: {
     flexDirection: 'row',
@@ -406,22 +418,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metronomeTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: COLORS.alertRed,
   },
   metronomeSub: {
     fontSize: 10,
     color: COLORS.textSecondary,
+    marginTop: 1,
   },
   metronomeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: COLORS.alertRed,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   metronomeBtnActive: {
     backgroundColor: '#FFFFFF',
@@ -432,19 +445,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   quickPromptsWrapper: {
-    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
-    backgroundColor: COLORS.surfaceLight,
   },
   quickPromptsScroll: {
-    paddingHorizontal: 12,
-    gap: 6,
+    paddingHorizontal: 14,
+    gap: 8,
   },
   promptChip: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: COLORS.surfaceLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
@@ -455,69 +468,65 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   chatListContent: {
-    paddingVertical: 10,
-    paddingBottom: 16,
+    padding: 14,
+    paddingBottom: 20,
+    gap: 12,
   },
-  typingIndicatorBox: {
+  loadingBubble: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    alignSelf: 'flex-start',
+    marginTop: 6,
   },
-  typingText: {
+  loadingText: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    fontStyle: 'italic',
   },
-  inputContainer: {
+  inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
-    backgroundColor: '#FFFFFF',
     gap: 8,
   },
   micBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0F6FF',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#D0E1FD',
   },
   micBtnRecording: {
     backgroundColor: COLORS.alertRed,
-    borderColor: COLORS.alertRed,
   },
-  input: {
+  textInput: {
     flex: 1,
-    height: 42,
-    borderRadius: 21,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.surfaceLight,
     paddingHorizontal: 14,
     fontSize: 13,
     color: COLORS.textPrimary,
-    fontWeight: '500',
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
   },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORS.secondaryBlue,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.secondaryBlue,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
   },
   sendBtnDisabled: {
     backgroundColor: COLORS.cardBorder,

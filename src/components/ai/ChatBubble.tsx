@@ -8,14 +8,17 @@ import { Hospital } from '../../services/mockDataService';
 
 interface ChatBubbleProps {
   message: AiChatMessage;
-  onBookHospital: (hospital: Hospital) => void;
+  onBookHospital?: (hospital: Hospital) => void;
+  onSelectHospital?: (hospital: Hospital) => void;
 }
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,
   onBookHospital,
+  onSelectHospital,
 }) => {
   const isUser = message.sender === 'user';
+  const handleBook = onBookHospital || onSelectHospital || (() => {});
 
   // Basic markdown bold formatter
   const renderFormattedText = (rawText: string) => {
@@ -75,7 +78,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         {!isUser && message.recommendedHospitals && message.recommendedHospitals.length > 0 && (
           <HospitalChatCard
             hospitals={message.recommendedHospitals}
-            onBookAmbulance={onBookHospital}
+            onBookAmbulance={handleBook}
           />
         )}
       </View>

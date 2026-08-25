@@ -1,6 +1,9 @@
+// 🏥 Hospital Item Component - Hospital Card with photo, live doctor status & ICU beds
+// User ko hospital ki full photo, rating, emergency physician status aur distance dikhata hai
+
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Building2, Star, Clock, BedDouble, ChevronRight } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Building2, Star, Clock, BedDouble, ChevronRight, UserCheck, ShieldCheck } from 'lucide-react-native';
 import { COLORS } from '../../constants/colors';
 import { Hospital } from '../../services/mockDataService';
 
@@ -21,16 +24,25 @@ export const HospitalItem: React.FC<HospitalItemProps> = ({
         styles.card,
         isSelected && styles.cardSelected,
       ]}
-      activeOpacity={0.85}
+      activeOpacity={0.88}
       onPress={onPress}
     >
-      <View style={styles.iconBox}>
-        <Building2
-          size={24}
-          color={isSelected ? COLORS.primary : COLORS.textSecondary}
+      {/* 🖼️ Hospital Image Thumbnail */}
+      <View style={styles.imageWrapper}>
+        <Image
+          source={{ uri: hospital.imageUrl }}
+          style={styles.hospitalImage}
+          resizeMode="cover"
         />
+        {hospital.openNow && (
+          <View style={styles.openNowBadge}>
+            <View style={styles.openNowDot} />
+            <Text style={styles.openNowText}>24/7 OPEN</Text>
+          </View>
+        )}
       </View>
 
+      {/* 📋 Hospital Details */}
       <View style={styles.infoCol}>
         <View style={styles.titleRow}>
           <Text style={styles.hospitalName} numberOfLines={1}>
@@ -42,34 +54,45 @@ export const HospitalItem: React.FC<HospitalItemProps> = ({
           {hospital.address}
         </Text>
 
+        {/* 👨‍⚕️ On-Duty Doctor Status Pill */}
+        {hospital.doctorOnDuty && (
+          <View style={styles.doctorPill}>
+            <UserCheck size={12} color={COLORS.primaryDark} />
+            <Text style={styles.doctorText} numberOfLines={1}>
+              {hospital.doctorName} • <Text style={{ fontWeight: '800' }}>ON DUTY</Text>
+            </Text>
+          </View>
+        )}
+
+        {/* 🏷️ Telemetry Badges: Rating, Distance, ETA, ICU Beds */}
         <View style={styles.metaRow}>
           {/* Rating */}
           <View style={styles.badge}>
-            <Star size={12} color={COLORS.star} fill={COLORS.star} />
+            <Star size={11} color={COLORS.star} fill={COLORS.star} />
             <Text style={styles.ratingText}>{hospital.rating.toFixed(1)}</Text>
             <Text style={styles.ratingsCount}>({hospital.userRatingsTotal})</Text>
           </View>
 
           {/* Distance */}
           <View style={styles.badge}>
-            <Text style={styles.distanceText}>{hospital.distanceKm} km away</Text>
+            <Text style={styles.distanceText}>{hospital.distanceKm} km</Text>
           </View>
 
           {/* ETA */}
           <View style={styles.badge}>
-            <Clock size={12} color={COLORS.textSecondary} />
+            <Clock size={11} color={COLORS.textSecondary} />
             <Text style={styles.etaText}>{hospital.etaMinutes} min</Text>
           </View>
 
           {/* ICU Bed */}
           <View style={[styles.badge, styles.bedBadge]}>
-            <BedDouble size={12} color={COLORS.primaryDark} />
-            <Text style={styles.bedText}>{hospital.icuBedsAvailable} ICU Beds</Text>
+            <BedDouble size={11} color={COLORS.primaryDark} />
+            <Text style={styles.bedText}>{hospital.icuBedsAvailable} ICU</Text>
           </View>
         </View>
       </View>
 
-      <ChevronRight size={20} color={isSelected ? COLORS.primary : COLORS.textMuted} />
+      <ChevronRight size={18} color={isSelected ? COLORS.primary : COLORS.textMuted} />
     </TouchableOpacity>
   );
 };
@@ -79,33 +102,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    padding: 14,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: COLORS.cardBorder,
     marginBottom: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+    gap: 12,
   },
   cardSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: '#F0FDF4',
   },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.surfaceLight,
+  imageWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 14,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#E2E8F0',
+  },
+  hospitalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  openNowBadge: {
+    position: 'absolute',
+    bottom: 3,
+    left: 3,
+    right: 3,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 6,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    gap: 3,
+    paddingVertical: 2,
+  },
+  openNowDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  openNowText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   infoCol: {
     flex: 1,
-    marginRight: 8,
   },
   titleRow: {
     flexDirection: 'row',
@@ -113,21 +164,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   hospitalName: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     color: COLORS.textPrimary,
     marginBottom: 2,
   },
   addressText: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textSecondary,
+    marginBottom: 5,
+  },
+  doctorPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
     marginBottom: 6,
+    alignSelf: 'flex-start',
+  },
+  doctorText: {
+    fontSize: 10,
+    color: COLORS.primaryDark,
+    fontWeight: '600',
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
   },
   badge: {
     flexDirection: 'row',
@@ -137,32 +206,35 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
     gap: 3,
+    borderWidth: 0.5,
+    borderColor: COLORS.cardBorder,
   },
   ratingText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: COLORS.textPrimary,
   },
   ratingsCount: {
-    fontSize: 10,
+    fontSize: 9,
     color: COLORS.textMuted,
   },
   distanceText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: COLORS.textPrimary,
   },
   etaText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: COLORS.textSecondary,
   },
   bedBadge: {
     backgroundColor: '#E8F5E9',
+    borderColor: '#C8E6C9',
   },
   bedText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: COLORS.primaryDark,
   },
 });
