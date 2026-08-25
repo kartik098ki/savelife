@@ -1,5 +1,5 @@
 // 🤖 AI Emergency Assistant Screen - NVIDIA NIM LLM Powered
-// Emergency triage, voice STT/TTS, CPR metronome, aur Sector 128 hospital recommendations
+// Emergency triage, voice STT/TTS with mute control, CPR metronome, aur Sector 128 hospital recommendations
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -22,6 +22,7 @@ import {
   Mic,
   MicOff,
   Volume2,
+  VolumeX,
   HeartPulse,
   StopCircle,
   RefreshCw,
@@ -41,6 +42,7 @@ export const AiAssistantScreen: React.FC = () => {
 
   const [inputVal, setInputVal] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(false); // 🔇 Muted by default as requested!
   const [isMetronomeActive, setIsMetronomeActive] = useState(false);
   const [metronomeCount, setMetronomeCount] = useState(0);
   const [metronomeVisualPulse, setMetronomeVisualPulse] = useState(false);
@@ -53,19 +55,33 @@ export const AiAssistantScreen: React.FC = () => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 150);
 
-    // 🔊 Speak last assistant message
+    // 🔇 Speak ONLY if user explicitly enabled voice output
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.sender === 'assistant' && lastMsg.text) {
+    if (isVoiceOutputEnabled && lastMsg && lastMsg.sender === 'assistant' && lastMsg.text) {
       soundService.speakText(lastMsg.text);
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isVoiceOutputEnabled]);
 
-  // Clean up CPR metronome on unmount
+  // Clean up CPR metronome and speech on unmount
   useEffect(() => {
     return () => {
       soundService.stopCprMetronome();
+      soundService.stopSpeech();
     };
   }, []);
+
+  const toggleVoiceOutput = () => {
+    if (isVoiceOutputEnabled) {
+      soundService.stopSpeech();
+      setIsVoiceOutputEnabled(false);
+    } else {
+      setIsVoiceOutputEnabled(true);
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg && lastMsg.sender === 'assistant' && lastMsg.text) {
+        soundService.speakText(lastMsg.text);
+      }
+    }
+  };
 
   const toggleMetronome = () => {
     if (isMetronomeActive) {
@@ -154,12 +170,15 @@ export const AiAssistantScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
-        {/* 🤖 Header with Glowing Ethereal AI Avatar */}
+        {/* 🤖 Header with Glowing Ethereal AI Avatar & Mute/Unmute Toggle */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backBtn}
             activeOpacity={0.8}
-            onPress={() => setCurrentScreen('home')}
+            onPress={() => {
+              soundService.stopSpeech();
+              setCurrentScreen('home');
+            }}
           >
             <ArrowLeft size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
@@ -176,15 +195,28 @@ export const AiAssistantScreen: React.FC = () => {
                 <Text style={styles.liveAiBadgeText}>NVIDIA NIM</Text>
               </View>
             </View>
-            <Text style={styles.headerSubtitle}>24/7 Triage & Voice First-Aid</Text>
+            <Text style={styles.headerSubtitle}>24/7 Triage & Medical First-Aid</Text>
           </View>
+
+          {/* 🔇 Mute / Unmute AI Speech Toggle */}
+          <TouchableOpacity
+            style={[styles.muteBtn, isVoiceOutputEnabled && styles.muteBtnActive]}
+            activeOpacity={0.8}
+            onPress={toggleVoiceOutput}
+          >
+            {isVoiceOutputEnabled ? (
+              <Volume2 size={16} color="#FFFFFF" />
+            ) : (
+              <VolumeX size={16} color={COLORS.textSecondary} />
+            )}
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.resetBtn}
             activeOpacity={0.8}
             onPress={resetChat}
           >
-            <RefreshCw size={16} color={COLORS.textSecondary} />
+            <RefreshCw size={15} color={COLORS.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -302,7 +334,7 @@ export const AiAssistantScreen: React.FC = () => {
 
           <TextInput
             style={styles.textInput}
-            placeholder={isRecording ? 'Listening to voice...' : 'Describe patient symptoms, age, pain...'}
+            placeholder={isRecording ? 'Listening to voice...' : 'Describe patient symptoms, pain, age...'}
             placeholderTextColor={COLORS.textPlaceholder}
             value={inputVal}
             onChangeText={setInputVal}
@@ -339,12 +371,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
-    gap: 10,
+    gap: 8,
   },
   backBtn: {
     width: 36,
@@ -385,6 +417,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 1,
+  },
+  muteBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  muteBtnActive: {
+    backgroundColor: COLORS.primary,
   },
   resetBtn: {
     width: 36,

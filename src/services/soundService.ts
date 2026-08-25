@@ -158,6 +158,15 @@ class EmergencySoundService {
     this.sirenInterval = setInterval(playTone, 420);
   }
 
+  // Stop speech immediately
+  stopSpeech() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
+  }
+
   // Text-to-speech for AI Emergency Assistant
   speakText(text: string) {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {

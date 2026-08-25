@@ -52,7 +52,8 @@ export default function App() {
     currentScreen === 'home' ||
     currentScreen === 'hospital_list' ||
     currentScreen === 'booking_history' ||
-    currentScreen === 'profile';
+    currentScreen === 'profile' ||
+    currentScreen === 'ai_assistant';
 
   return (
     <SafeAreaProvider>
