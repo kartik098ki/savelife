@@ -71,8 +71,11 @@ export const HospitalSelectScreen: React.FC = () => {
     }
 
     loadHospitals();
-    calculateAndSetFare();
   }, [pickupLocation]);
+
+  useEffect(() => {
+    calculateAndSetFare();
+  }, [selectedHospital, selectedAmbulanceType]);
 
   const filteredHospitals = hospitals.filter(
     (h) =>

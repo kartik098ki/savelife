@@ -43,7 +43,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 12 : 6);
-  const { bookingStatus } = useBookingStore();
+  const { bookingStatus, startBookingFlow } = useBookingStore();
 
   const handleAmbulanceTabPress = () => {
     // 🚑 If active trip exists, jump straight to tracking/dispatch
@@ -57,8 +57,8 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     ) {
       onNavigate('live_tracking');
     } else {
-      // 🚑 Otherwise open immediate ambulance booking screen
-      onNavigate('hospital_select');
+      // 🚑 Otherwise initialize booking flow & open ambulance booking screen
+      startBookingFlow(undefined, 'als');
     }
   };
 
