@@ -298,9 +298,9 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
 
       if (!polylineRef.current) {
         polylineRef.current = L.polyline(latLngs, {
-          color: COLORS.alertRed,
-          weight: 5,
-          opacity: 0.85,
+          color: '#2563EB',
+          weight: 6,
+          opacity: 0.9,
           lineJoin: 'round',
           lineCap: 'round',
         }).addTo(map);

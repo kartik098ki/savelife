@@ -28,6 +28,7 @@ export function useDriverSimulation() {
     tripPhase,
     updateDriverPosition,
     setTripPhase,
+    setRouteCoordinates,
   } = useDriverStore();
 
   const {
@@ -68,9 +69,10 @@ export function useDriverSimulation() {
 
       if (isCancelled || points.length < 2) return;
       routePointsRef.current = points;
+      setRouteCoordinates(points);
 
-      const totalDurationSeconds = tripPhase === 'driver_to_pickup' ? 20 : 28;
-      const tickMs = 600;
+      const totalDurationSeconds = tripPhase === 'driver_to_pickup' ? 16 : 24;
+      const tickMs = 500;
       const totalTicks = (totalDurationSeconds * 1000) / tickMs;
       let currentTick = 0;
 
@@ -104,18 +106,13 @@ export function useDriverSimulation() {
           if (tripPhase === 'driver_to_pickup') {
             soundService.playDispatchSuccess();
             setTripPhase('pickup_wait');
-            setBookingStatus('patient_picked_up');
-
-            setTimeout(() => {
-              setTripPhase('en_route_hospital');
-              setBookingStatus('en_route_hospital');
-            }, 3000);
+            setBookingStatus('driver_arriving');
           } else if (tripPhase === 'en_route_hospital') {
             soundService.playDispatchSuccess();
             setTripPhase('arrived_hospital');
             setTimeout(() => {
               completeTrip();
-            }, 2500);
+            }, 3000);
           }
         }
       }, tickMs);

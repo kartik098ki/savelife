@@ -34,6 +34,7 @@ interface DriverState {
     etaSecRemaining: number
   ) => void;
   setTripPhase: (phase: TripPhase) => void;
+  setRouteCoordinates: (points: Array<{ latitude: number; longitude: number }>) => void;
   resetDriver: () => void;
 }
 
@@ -47,6 +48,8 @@ export const useDriverStore = create<DriverState>((set, get) => ({
   routeCoordinates: [],
   routeIndex: 0,
   interpolationProgress: 0,
+
+  setRouteCoordinates: (points) => set({ routeCoordinates: points }),
 
   initializeDispatch: (pickupLat, pickupLng, ambulanceType, routePoints, initialEtaMinutes) => {
     const config = AMBULANCE_TYPES[ambulanceType] || AMBULANCE_TYPES.bls;

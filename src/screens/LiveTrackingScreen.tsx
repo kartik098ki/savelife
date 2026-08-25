@@ -1,5 +1,5 @@
 // 🗺️ Live Ambulance Tracking Screen - Cloned from Rapido Ride-Booking UX
-// Pixel-perfect implementation matching user's reference screenshot (media_1787632004055.png)
+// Pixel-perfect Rapido layout with animated incoming route line, live arrival state, and in-screen OTP
 
 import React, { useState } from 'react';
 import {
@@ -38,6 +38,8 @@ import {
   Navigation,
   CheckCircle,
   PhoneCall,
+  Copy,
+  Sparkles,
 } from 'lucide-react-native';
 
 export const LiveTrackingScreen: React.FC = () => {
@@ -55,7 +57,7 @@ export const LiveTrackingScreen: React.FC = () => {
     fareCalculation,
   } = useBookingStore();
 
-  // 🚗 Driver Store - Live coordinates & telemetry
+  // 🚗 Driver Store - Live coordinates, route polyline & telemetry
   const {
     driver,
     currentCoord,
@@ -63,12 +65,14 @@ export const LiveTrackingScreen: React.FC = () => {
     tripPhase,
     etaMinutesRemaining,
     etaSecondsRemaining,
+    routeCoordinates,
+    setTripPhase,
   } = useDriverStore();
 
   // 🗺️ Start road network simulation
   useDriverSimulation();
 
-  // Modals
+  // Modals & States
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [messages, setMessages] = useState<Array<{ sender: 'user' | 'driver'; text: string; time: string }>>([
@@ -84,8 +88,10 @@ export const LiveTrackingScreen: React.FC = () => {
   const [isTripDetailsOpen, setIsTripDetailsOpen] = useState(false);
   const [patientStatus, setPatientStatus] = useState('Conscious & Breathing');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
 
   const isEnRouteToHospital = tripPhase === 'en_route_hospital' || tripPhase === 'arrived_hospital';
+  const hasArrived = tripPhase === 'pickup_wait' || etaSecondsRemaining <= 0;
 
   // Split 4-digit OTP into 4 individual characters for separate boxes
   const pinDigits = (otpCode || '2979').slice(0, 4).split('');
@@ -101,6 +107,16 @@ export const LiveTrackingScreen: React.FC = () => {
         await Share.share({
           message: `SaveLife Live Ambulance Tracking: Unit ${driver.ambulanceNumber} is en route. ETA: ${etaMinutesRemaining} mins. Emergency PIN: ${otpCode}.`,
         });
+      }
+    } catch (e) {}
+  };
+
+  const handleCopyPin = async () => {
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(otpCode || '2979');
+        setCopiedPin(true);
+        setTimeout(() => setCopiedPin(false), 2000);
       }
     } catch (e) {}
   };
@@ -127,9 +143,13 @@ export const LiveTrackingScreen: React.FC = () => {
     }, 1200);
   };
 
+  const handleStartHospitalTransit = () => {
+    setTripPhase('en_route_hospital');
+  };
+
   return (
     <View style={styles.container}>
-      {/* 🗺️ Full Interactive Map Area (Top 55-60%) */}
+      {/* 🗺️ Full Interactive Map Area with Live Animated Incoming Route Line */}
       <View style={styles.mapContainer}>
         <LiveMapView
           pickupLocation={pickupLocation}
@@ -139,6 +159,7 @@ export const LiveTrackingScreen: React.FC = () => {
             heading,
           }}
           destinationHospital={isEnRouteToHospital ? selectedHospital : null}
+          routeCoordinates={routeCoordinates}
           showPickupPuck={!isEnRouteToHospital}
           showDriverMarker={true}
           showDestinationMarker={isEnRouteToHospital}
@@ -155,13 +176,13 @@ export const LiveTrackingScreen: React.FC = () => {
           </TouchableOpacity>
         </SafeAreaView>
 
-        {/* ✏️ Floating "Pickup" Pill over Map (Matching Screenshot) */}
+        {/* ✏️ Floating "Pickup" Pill over Map */}
         <View style={styles.floatingPickupTag}>
           <Text style={styles.floatingPickupTagText}>Pickup</Text>
           <Edit2 size={12} color={COLORS.textPrimary} style={{ marginLeft: 4 }} />
         </View>
 
-        {/* 🔘 Floating Map Bottom-Right Buttons: [ Share ] & [ 🛡️ Safety ] (Matching Screenshot) */}
+        {/* 🔘 Floating Map Bottom-Right Buttons: [ Share ] & [ 🛡️ Safety ] */}
         <View style={styles.mapFloatingActions}>
           <TouchableOpacity
             style={styles.shareRoundBtn}
@@ -182,43 +203,83 @@ export const LiveTrackingScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* 📱 Bottom Sheet Card (Pixel-Perfect Clone of Reference Screenshot) */}
+      {/* 📱 Bottom Sheet Card (Pixel-Perfect Rapido Clone) */}
       <View style={styles.bottomSheetWrapper}>
         {/* Drag Handle */}
         <View style={styles.dragHandleContainer}>
           <View style={styles.dragHandle} />
         </View>
 
-        {/* 🔷 Blue Top Banner: "Walk to your pickup-point" */}
-        <View style={styles.blueHeaderBanner}>
+        {/* 🔷 Header Banner: Dynamic (En Route vs ARRIVED) */}
+        <View style={[styles.blueHeaderBanner, hasArrived && styles.arrivedHeaderBanner]}>
           <Text style={styles.blueHeaderBannerText}>
-            {isEnRouteToHospital ? 'En route to Emergency Hospital' : 'Walk to your pickup-point'}
+            {hasArrived
+              ? '🚨 AMBULANCE ARRIVED AT YOUR LOCATION'
+              : isEnRouteToHospital
+              ? 'En route to Emergency Hospital'
+              : 'Walk to your pickup-point'}
           </Text>
 
-          {/* White Card nested inside blue header: "Pickup in 2 mins" */}
+          {/* White Card nested inside header banner */}
           <View style={styles.etaWhiteCard}>
-            <Text style={styles.etaMainTitle}>
-              Pickup in <Text style={styles.etaHighlightGreen}>{etaMinutesRemaining} mins</Text>
-            </Text>
-            <Text style={styles.etaSubtitle}>
-              Captain {Math.max(120, etaSecondsRemaining * 3)} m away
-            </Text>
+            {hasArrived ? (
+              <View style={{ alignItems: 'center' }}>
+                <View style={styles.arrivedPillRow}>
+                  <View style={styles.arrivedBlinkingDot} />
+                  <Text style={styles.arrivedMainTitle}>Arrived • Paramedic Waiting</Text>
+                </View>
+                <Text style={styles.etaSubtitle}>
+                  Unit {driver.ambulanceNumber} is outside • Share PIN below
+                </Text>
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center' }}>
+                <Text style={styles.etaMainTitle}>
+                  Pickup in <Text style={styles.etaHighlightGreen}>{Math.max(1, etaMinutesRemaining)} mins</Text>
+                </Text>
+                <Text style={styles.etaSubtitle}>
+                  Captain {Math.max(80, etaSecondsRemaining * 3)} m away
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* 🔢 PIN / OTP Section (Matching Screenshot: "Start your order with PIN [2][9][7][9]") */}
+        {/* 🔢 PIN / OTP Section (Displayed Right on Screen) */}
         <View style={styles.pinSectionRow}>
-          <Text style={styles.pinSectionLabel}>Start your order with PIN</Text>
-          <View style={styles.pinBoxesContainer}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.pinSectionLabel}>Start your order with PIN</Text>
+            {copiedPin && (
+              <Text style={{ fontSize: 10, color: COLORS.primaryDark, fontWeight: '800' }}>✓ Copied</Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.pinBoxesContainer}
+            activeOpacity={0.8}
+            onPress={handleCopyPin}
+          >
             {pinDigits.map((digit, index) => (
               <View key={index} style={styles.pinSingleBox}>
                 <Text style={styles.pinDigitText}>{digit}</Text>
               </View>
             ))}
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {/* 👨‍✈️ Captain / Driver Card (Matching Screenshot) */}
+        {/* If Arrived: Show "Patient On-board ➔ Start Hospital Transit" Button */}
+        {hasArrived && !isEnRouteToHospital && (
+          <TouchableOpacity
+            style={styles.startTransitBtn}
+            activeOpacity={0.88}
+            onPress={handleStartHospitalTransit}
+          >
+            <Navigation size={16} color="#FFFFFF" />
+            <Text style={styles.startTransitBtnText}>Patient On-board • Start Transit to Hospital</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* 👨‍✈️ Captain / Driver Card */}
         <View style={styles.captainCard}>
           {/* Top Recommendation Banner */}
           <View style={styles.captainHeaderRow}>
@@ -259,7 +320,7 @@ export const LiveTrackingScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* 💬 Message Captain Pill Input (Matching Screenshot) */}
+          {/* 💬 Message Captain Pill Input */}
           <TouchableOpacity
             style={styles.messageCaptainPill}
             activeOpacity={0.85}
@@ -656,12 +717,16 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     marginBottom: 12,
   },
+  arrivedHeaderBanner: {
+    backgroundColor: '#047857',
+  },
   blueHeaderBannerText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
+    letterSpacing: 0.3,
   },
   etaWhiteCard: {
     backgroundColor: '#FFFFFF',
@@ -669,6 +734,22 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     alignItems: 'center',
+  },
+  arrivedPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  arrivedBlinkingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  arrivedMainTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#047857',
   },
   etaMainTitle: {
     fontSize: 16,
@@ -683,14 +764,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   pinSectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 4,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   pinSectionLabel: {
     fontSize: 13,
@@ -716,6 +797,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     color: COLORS.textPrimary,
+  },
+  startTransitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#047857',
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 8,
+    marginBottom: 10,
+    shadowColor: '#047857',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  startTransitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   captainCard: {
     backgroundColor: '#FFFFFF',
