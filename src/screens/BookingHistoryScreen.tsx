@@ -77,6 +77,18 @@ export const BookingHistoryScreen: React.FC = () => {
             </View>
           )}
 
+          {/* New Emergency Booking CTA */}
+          {!isTripActive && (
+            <TouchableOpacity
+              style={styles.bookNewBtn}
+              activeOpacity={0.88}
+              onPress={() => setCurrentScreen('hospital_select')}
+            >
+              <Truck size={18} color="#FFFFFF" />
+              <Text style={styles.bookNewBtnText}>Book Emergency Ambulance Now</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Booking History Section */}
           <Text style={styles.sectionHeader}>Past Emergency Dispatches</Text>
 
@@ -223,6 +235,26 @@ const styles = StyleSheet.create({
   resumeTrackingBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '800',
+  },
+  bookNewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.alertRed,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+    marginBottom: 16,
+    shadowColor: COLORS.alertRed,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  bookNewBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '800',
   },
   sectionHeader: {

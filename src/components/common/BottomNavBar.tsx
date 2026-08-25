@@ -1,13 +1,12 @@
 // 📱 Bottom Navigation Bar - Global 5-Tab Navigation with Ethereal AI Glowing Orb
-// 1. Ride (Home Map) | 2. Ambulance (Track/History) | 3. AI Help (Ethereal Orb) | 4. Hospital (Directory) | 5. Profile
+// 1. Ride (Home Map) | 2. Ambulance (Dispatch/Track) | 3. AI Help (Ethereal Orb) | 4. Hospital (Directory) | 5. Profile
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Animated,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,10 +16,10 @@ import {
   Building2,
   User,
   Sparkles,
-  Bot,
 } from 'lucide-react-native';
 import { COLORS } from '../../constants/colors';
 import { EtherealOrb } from './EtherealOrb';
+import { useBookingStore } from '../../store/useBookingStore';
 
 export type ScreenType =
   | 'home'
@@ -44,13 +43,31 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 12 : 6);
+  const { bookingStatus } = useBookingStore();
+
+  const handleAmbulanceTabPress = () => {
+    // 🚑 If active trip exists, jump straight to tracking/dispatch
+    if (bookingStatus === 'searching') {
+      onNavigate('searching_dispatch');
+    } else if (
+      bookingStatus === 'driver_assigned' ||
+      bookingStatus === 'driver_arriving' ||
+      bookingStatus === 'patient_picked_up' ||
+      bookingStatus === 'en_route_hospital'
+    ) {
+      onNavigate('live_tracking');
+    } else {
+      // 🚑 Otherwise open immediate ambulance booking screen
+      onNavigate('hospital_select');
+    }
+  };
 
   const isTabActive = (tabKey: ScreenType) => {
     if (tabKey === 'home') {
-      return activeScreen === 'home' || activeScreen === 'hospital_select' || activeScreen === 'destination_search';
+      return activeScreen === 'home' || activeScreen === 'destination_search';
     }
-    if (tabKey === 'booking_history') {
-      return activeScreen === 'booking_history' || activeScreen === 'live_tracking' || activeScreen === 'searching_dispatch';
+    if (tabKey === 'hospital_select') {
+      return activeScreen === 'hospital_select' || activeScreen === 'searching_dispatch' || activeScreen === 'live_tracking' || activeScreen === 'booking_history';
     }
     return activeScreen === tabKey;
   };
@@ -78,27 +95,27 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* 🚑 Tab 2: Track Ambulance / Medical History */}
+      {/* 🚑 Tab 2: Book / Track Ambulance */}
       <TouchableOpacity
         style={styles.tabItem}
-        onPress={() => onNavigate('booking_history')}
+        onPress={handleAmbulanceTabPress}
         activeOpacity={0.7}
       >
         <Truck
           size={22}
-          color={isTabActive('booking_history') ? COLORS.primary : COLORS.textMuted}
+          color={isTabActive('hospital_select') ? COLORS.alertRed : COLORS.textMuted}
         />
         <Text
           style={[
             styles.tabLabel,
-            { color: isTabActive('booking_history') ? COLORS.primary : COLORS.textMuted },
+            { color: isTabActive('hospital_select') ? COLORS.alertRed : COLORS.textMuted, fontWeight: isTabActive('hospital_select') ? '800' : '700' },
           ]}
         >
           Ambulance
         </Text>
       </TouchableOpacity>
 
-      {/* 🔮 Tab 3: Raised Ethereal AI Orb Center Button (Inspired by Reference Screenshot) */}
+      {/* 🔮 Tab 3: Raised Ethereal AI Orb Center Button */}
       <View style={styles.centerSlot}>
         <View style={styles.orbFloatingWrapper}>
           <EtherealOrb

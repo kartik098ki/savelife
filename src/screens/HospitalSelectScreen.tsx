@@ -1,3 +1,6 @@
+// 🏥 Hospital Selection & Ambulance Booking Screen
+// Sector 128 Noida hospitals, BLS/ALS Ambulance Selector, Live Fare Summary & Route Preview
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -28,8 +31,10 @@ export const HospitalSelectScreen: React.FC = () => {
     selectedHospital,
     selectedAmbulanceType,
     fareCalculation,
+    routeToHospital,
     setSelectedHospital,
     setSelectedAmbulanceType,
+    calculateAndSetFare,
     confirmBookingAndSearch,
     setCurrentScreen,
   } = useBookingStore();
@@ -45,13 +50,11 @@ export const HospitalSelectScreen: React.FC = () => {
         const results = await fetchNearbyHospitals(
           pickupLocation.latitude,
           pickupLocation.longitude,
-          5000
+          6000
         );
-        // Distance ascending sort
         results.sort((a, b) => a.distanceKm - b.distanceKm);
         setHospitals(results);
 
-        // Auto-select the first hospital if none is selected
         if (!selectedHospital && results.length > 0) {
           setSelectedHospital(results[0]);
         }
@@ -68,6 +71,7 @@ export const HospitalSelectScreen: React.FC = () => {
     }
 
     loadHospitals();
+    calculateAndSetFare();
   }, [pickupLocation]);
 
   const filteredHospitals = hospitals.filter(
@@ -125,13 +129,14 @@ export const HospitalSelectScreen: React.FC = () => {
               <LiveMapView
                 pickupLocation={pickupLocation}
                 destinationHospital={selectedHospital}
+                routeCoordinates={routeToHospital?.coordinates}
                 showPickupPuck={true}
                 showDestinationMarker={true}
                 style={styles.miniMap}
               />
               <View style={styles.miniMapBadge}>
                 <MapPin size={12} color="#FFFFFF" />
-                <Text style={styles.miniMapBadgeText}>Route Preview</Text>
+                <Text style={styles.miniMapBadgeText}>Route Preview: {selectedHospital.distanceKm} km</Text>
               </View>
             </View>
           )}
@@ -183,17 +188,17 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-    gap: 12,
     backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.cardBorder,
+    gap: 12,
   },
   backBtn: {
     width: 40,
@@ -205,13 +210,12 @@ const styles = StyleSheet.create({
   },
   searchBarWrapper: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.surfaceLight,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 8,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    height: 40,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
   },
@@ -219,14 +223,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: COLORS.textPrimary,
-    fontWeight: '600',
+    marginLeft: 8,
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
   },
   miniMapContainer: {
-    height: 160,
+    height: 150,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
@@ -235,19 +239,21 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   miniMap: {
-    flex: 1,
+    height: '100%',
+    width: '100%',
   },
   miniMapBadge: {
     position: 'absolute',
     top: 10,
     left: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(14, 159, 110, 0.9)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
+    zIndex: 10,
   },
   miniMapBadgeText: {
     color: '#FFFFFF',
@@ -255,16 +261,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: COLORS.textPrimary,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   loaderBox: {
-    paddingVertical: 24,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    padding: 24,
   },
   loaderText: {
     fontSize: 13,

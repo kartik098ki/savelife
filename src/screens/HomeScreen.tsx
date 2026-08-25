@@ -14,6 +14,7 @@ import {
   SafeAreaView,
   Image,
   Linking,
+  Modal,
 } from 'react-native';
 import {
   Truck,
@@ -42,6 +43,9 @@ import {
   Clock,
   Sparkles,
   Radio,
+  X,
+  Crosshair,
+  Check,
 } from 'lucide-react-native';
 
 import { LiveMapView } from '../components/map/LiveMapView';
@@ -51,6 +55,7 @@ import { COLORS } from '../constants/colors';
 import { soundService } from '../services/soundService';
 import { getNearbyHospitalsMock, Hospital } from '../services/mockDataService';
 import { fetchNearbyHospitals } from '../services/googleMapsService';
+import { NOIDA_PICKUP_PRESETS, getCurrentUserLocation, UserLocation } from '../services/locationService';
 
 const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.40;
@@ -58,21 +63,23 @@ const MAP_HEIGHT = height * 0.40;
 export function HomeScreen() {
   // 📍 User live coordinates (Sector 128, Noida default)
   const { location } = useLiveLocation();
-  const { setCurrentScreen, startBookingFlow } = useBookingStore();
+  const { pickupLocation, setPickupLocation, setCurrentScreen, startBookingFlow } = useBookingStore();
   const [isSirenPlaying, setIsSirenPlaying] = useState(false);
   const [nearbyHospitals, setNearbyHospitals] = useState<Hospital[]>([]);
+  const [isPickupModalOpen, setIsPickupModalOpen] = useState(false);
+  const [detectingGps, setDetectingGps] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const list = await fetchNearbyHospitals(location.latitude, location.longitude, 6000);
+        const list = await fetchNearbyHospitals(pickupLocation.latitude, pickupLocation.longitude, 6000);
         setNearbyHospitals(list.slice(0, 4));
       } catch {
-        setNearbyHospitals(getNearbyHospitalsMock(location.latitude, location.longitude).slice(0, 4));
+        setNearbyHospitals(getNearbyHospitalsMock(pickupLocation.latitude, pickupLocation.longitude).slice(0, 4));
       }
     }
     load();
-  }, [location]);
+  }, [pickupLocation]);
 
   const toggleSirenSound = () => {
     if (isSirenPlaying) {
@@ -93,12 +100,29 @@ export function HomeScreen() {
     Linking.openURL('tel:112');
   };
 
+  const handleDetectLiveGps = async () => {
+    setDetectingGps(true);
+    try {
+      const live = await getCurrentUserLocation();
+      setPickupLocation(live);
+      setIsPickupModalOpen(false);
+    } catch (e) {
+    } finally {
+      setDetectingGps(false);
+    }
+  };
+
+  const handleSelectPreset = (preset: UserLocation) => {
+    setPickupLocation(preset);
+    setIsPickupModalOpen(false);
+  };
+
   return (
     <View style={styles.container}>
       {/* 🗺️ Top Real-time Leaflet Map Section */}
       <View style={styles.mapContainer}>
         <LiveMapView 
-          pickupLocation={location} 
+          pickupLocation={pickupLocation} 
           showPickupPuck={true}
         />
 
@@ -134,20 +158,20 @@ export function HomeScreen() {
           <Text style={styles.patrolBadgeText}>3 ALS Units in Sector 128</Text>
         </View>
         
-        {/* 📍 Reverse-Geocoded Sector 128 Address Chip */}
+        {/* 📍 Reverse-Geocoded Sector 128 Address Chip (Tapping opens Pickup Switcher) */}
         <TouchableOpacity
           style={styles.addressChipContainer}
           activeOpacity={0.88}
-          onPress={() => setCurrentScreen('destination_search')}
+          onPress={() => setIsPickupModalOpen(true)}
         >
           <View style={styles.addressChip}>
             <View style={styles.greenDotRing}>
               <View style={styles.greenDotInner} />
             </View>
             <View style={styles.addressTextContainer}>
-              <Text style={styles.addressTitle}>Current Emergency Pickup</Text>
+              <Text style={styles.addressTitle}>Current Emergency Pickup • Tap to change</Text>
               <Text style={styles.addressSubtitle} numberOfLines={1}>
-                {location.address || 'Tower 4, Jaypee Greens Wish Town, Sector 128, Noida, UP'}
+                {pickupLocation.address || 'Tower 4, Jaypee Greens Wish Town, Sector 128, Noida, UP'}
               </Text>
             </View>
             <ChevronRight size={18} color={COLORS.textSecondary} />
@@ -238,7 +262,7 @@ export function HomeScreen() {
           <TouchableOpacity 
             style={[styles.serviceCard, styles.emergencyCard]}
             activeOpacity={0.88}
-            onPress={() => setCurrentScreen('hospital_select')}
+            onPress={() => startBookingFlow(undefined, 'als')}
           >
             <View style={styles.badgeRed}>
               <Text style={styles.badgeTextRed}>3–4 MIN</Text>
@@ -248,7 +272,7 @@ export function HomeScreen() {
             <Text style={styles.serviceSubtitle}>ICU on Wheels • Ventilator</Text>
             
             <View style={styles.cardCtaRow}>
-              <Text style={styles.cardCtaTextRed}>Dispatch Now ➔</Text>
+              <Text style={styles.cardCtaTextRed}>Book Ambulance ➔</Text>
             </View>
           </TouchableOpacity>
 
@@ -448,6 +472,58 @@ export function HomeScreen() {
         {/* Bottom Nav Spacer */}
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* 📍 Real Pickup Location Selector Modal */}
+      <Modal visible={isPickupModalOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Set Emergency Pickup Location</Text>
+              <TouchableOpacity onPress={() => setIsPickupModalOpen(false)}>
+                <X size={20} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 16, gap: 12 }}>
+              {/* 📡 Detect Real Live GPS Button */}
+              <TouchableOpacity
+                style={styles.gpsDetectBtn}
+                activeOpacity={0.85}
+                onPress={handleDetectLiveGps}
+              >
+                <Crosshair size={18} color="#FFFFFF" />
+                <Text style={styles.gpsDetectBtnText}>
+                  {detectingGps ? 'Locating device via GPS...' : 'Use My Current Live GPS Location'}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.presetsLabel}>Sector 128 & Noida Expressway Presets:</Text>
+
+              {/* Noida Presets List */}
+              <ScrollView style={{ maxHeight: 260 }}>
+                {NOIDA_PICKUP_PRESETS.map((preset, idx) => {
+                  const isSelected = pickupLocation.address === preset.address;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[styles.presetItem, isSelected && styles.presetItemSelected]}
+                      onPress={() => handleSelectPreset(preset)}
+                    >
+                      <MapPin size={16} color={isSelected ? COLORS.primaryDark : COLORS.textSecondary} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.presetItemText, isSelected && styles.presetItemTextSelected]}>
+                          {preset.address}
+                        </Text>
+                      </View>
+                      {isSelected && <Check size={16} color={COLORS.primaryDark} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1174,5 +1250,81 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 28,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  gpsDetectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 13,
+    borderRadius: 14,
+    gap: 8,
+    marginBottom: 4,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  gpsDetectBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  presetsLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+    marginTop: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  presetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+    gap: 10,
+    backgroundColor: '#F8FAFC',
+  },
+  presetItemSelected: {
+    backgroundColor: '#ECFDF5',
+    borderColor: COLORS.primary,
+  },
+  presetItemText: {
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  presetItemTextSelected: {
+    color: COLORS.primaryDark,
+    fontWeight: '800',
   },
 });
