@@ -1,3 +1,6 @@
+// 🗺️ Live Ambulance Tracking Screen - Cloned from Rapido Ride-Booking UX
+// Pixel-perfect implementation matching user's reference screenshot (media_1787632004055.png)
+
 import React, { useState } from 'react';
 import {
   View,
@@ -9,10 +12,12 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Image,
+  Share,
+  Platform,
+  Linking,
 } from 'react-native';
 import { LiveMapView } from '../components/map/LiveMapView';
-import { DriverCard } from '../components/tracking/DriverCard';
-import { TripActions } from '../components/tracking/TripActions';
 import { useBookingStore } from '../store/useBookingStore';
 import { useDriverStore } from '../store/useDriverStore';
 import { useDriverSimulation } from '../hooks/useDriverSimulation';
@@ -27,10 +32,16 @@ import {
   X,
   HeartPulse,
   Phone,
+  Share2,
+  Shield,
+  Edit2,
+  Navigation,
+  CheckCircle,
+  PhoneCall,
 } from 'lucide-react-native';
 
 export const LiveTrackingScreen: React.FC = () => {
-  // 🚑 Booking Store - Booking ki saari details
+  // 🚑 Booking Store - Live state & OTP
   const {
     pickupLocation,
     selectedHospital,
@@ -41,9 +52,10 @@ export const LiveTrackingScreen: React.FC = () => {
     otpCode,
     otpVerified,
     setOtpVerified,
+    fareCalculation,
   } = useBookingStore();
 
-  // 🚗 Driver Store - Driver ki live location aur trip phase
+  // 🚗 Driver Store - Live coordinates & telemetry
   const {
     driver,
     currentCoord,
@@ -53,36 +65,44 @@ export const LiveTrackingScreen: React.FC = () => {
     etaSecondsRemaining,
   } = useDriverStore();
 
-  // 🗺️ Live movement simulation chalu karo
+  // 🗺️ Start road network simulation
   useDriverSimulation();
 
+  // Modals
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [messages, setMessages] = useState<Array<{ sender: 'user' | 'driver'; text: string; time: string }>>([
     {
       sender: 'driver',
-      text: 'Emergency lights active! Approaching your location now. Keep patient in resting position.',
+      text: 'Emergency lights active! Approaching Pragati Marg now. Keep patient resting.',
       time: 'Just now',
     },
   ]);
 
   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
+  const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
+  const [isTripDetailsOpen, setIsTripDetailsOpen] = useState(false);
   const [patientStatus, setPatientStatus] = useState('Conscious & Breathing');
-
-  // 🔢 OTP Verification Modal - Driver aaya toh OTP verify karo
-  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
-  const [otpInput, setOtpInput] = useState('');
-  const [otpError, setOtpError] = useState(false);
-
-  // ❌ Cancel Confirmation State
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const isEnRouteToHospital = tripPhase === 'en_route_hospital' || tripPhase === 'arrived_hospital';
 
-  const formatSeconds = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${mins}:${s < 10 ? '0' : ''}${s}`;
+  // Split 4-digit OTP into 4 individual characters for separate boxes
+  const pinDigits = (otpCode || '2979').slice(0, 4).split('');
+
+  const handleShareTrip = async () => {
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(
+          `SaveLife Live Ambulance Tracking: Unit ${driver.ambulanceNumber} is en route. ETA: ${etaMinutesRemaining} mins. Emergency PIN: ${otpCode}. Track: http://localhost:8081`
+        );
+        Alert.alert('Tracking Link Copied', 'Live GPS ambulance tracking link copied to clipboard!');
+      } else {
+        await Share.share({
+          message: `SaveLife Live Ambulance Tracking: Unit ${driver.ambulanceNumber} is en route. ETA: ${etaMinutesRemaining} mins. Emergency PIN: ${otpCode}.`,
+        });
+      }
+    } catch (e) {}
   };
 
   const handleSendMessage = () => {
@@ -104,12 +124,12 @@ export const LiveTrackingScreen: React.FC = () => {
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-    }, 1500);
+    }, 1200);
   };
 
   return (
     <View style={styles.container}>
-      {/* Full-Screen Live Interactive Map */}
+      {/* 🗺️ Full Interactive Map Area (Top 55-60%) */}
       <View style={styles.mapContainer}>
         <LiveMapView
           pickupLocation={pickupLocation}
@@ -123,117 +143,160 @@ export const LiveTrackingScreen: React.FC = () => {
           showDriverMarker={true}
           showDestinationMarker={isEnRouteToHospital}
         />
-      </View>
 
-      {/* Floating Top Nav Bar with Live Speedometer */}
-      <SafeAreaView style={styles.topSafeArea}>
-        <View style={styles.topHeader}>
+        {/* 🔙 Floating Top Back Button */}
+        <SafeAreaView style={styles.topBarSafe}>
           <TouchableOpacity
-            style={styles.backBtn}
-            activeOpacity={0.8}
+            style={styles.floatingBackBtn}
+            activeOpacity={0.85}
             onPress={() => setCurrentScreen('home')}
           >
             <ArrowLeft size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
+        </SafeAreaView>
 
-          <View style={styles.speedometerPill}>
-            <View style={styles.liveGreenDot} />
-            <Text style={styles.speedText}>Speed: 52 km/h • Siren ON</Text>
-          </View>
-
-          <View style={styles.emergencyIdBadge}>
-            <ShieldCheck size={14} color="#FFFFFF" />
-            <Text style={styles.emergencyIdText}>
-              #{activeBookingId || 'BK-8821'}
-            </Text>
-          </View>
+        {/* ✏️ Floating "Pickup" Pill over Map (Matching Screenshot) */}
+        <View style={styles.floatingPickupTag}>
+          <Text style={styles.floatingPickupTagText}>Pickup</Text>
+          <Edit2 size={12} color={COLORS.textPrimary} style={{ marginLeft: 4 }} />
         </View>
 
-        {/* Quick Paramedic Telemetry Action Bar */}
-        <View style={styles.quickBar}>
+        {/* 🔘 Floating Map Bottom-Right Buttons: [ Share ] & [ 🛡️ Safety ] (Matching Screenshot) */}
+        <View style={styles.mapFloatingActions}>
           <TouchableOpacity
-            style={styles.quickBarBtn}
-            activeOpacity={0.85}
-            onPress={() => setIsChatOpen(true)}
+            style={styles.shareRoundBtn}
+            activeOpacity={0.88}
+            onPress={handleShareTrip}
           >
-            <MessageSquare size={14} color={COLORS.primaryDark} />
-            <Text style={styles.quickBarBtnText}>Chat with EMT</Text>
+            <Share2 size={18} color="#2563EB" />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.quickBarBtn}
-            activeOpacity={0.85}
-            onPress={() => setIsVitalsModalOpen(true)}
+            style={styles.safetyPillBtn}
+            activeOpacity={0.88}
+            onPress={() => setIsSafetyModalOpen(true)}
           >
-            <HeartPulse size={14} color={COLORS.alertRed} />
-            <Text style={styles.quickBarBtnText}>Pre-Submit Vitals</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-
-      {/* Bottom Driver Profile & Trip Control Card */}
-      <View style={styles.bottomCardWrapper}>
-        <DriverCard
-          driver={driver}
-          tripPhase={tripPhase}
-          etaMinutes={etaMinutesRemaining}
-          hospitalName={selectedHospital?.name}
-        />
-
-        <TripActions
-          bookingId={activeBookingId || 'BK-8821'}
-          driverName={driver.name}
-          vehicleNo={driver.ambulanceNumber}
-          hospitalName={selectedHospital?.name}
-          onCancel={() => setShowCancelConfirm(true)}
-        />
-
-        {/* 🔢 OTP Verification Button - Driver ke paas OTP dikhao */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            backgroundColor: '#FEF3C7', paddingVertical: 10, paddingHorizontal: 16,
-            borderRadius: 14, borderWidth: 1, borderColor: '#FDE68A', gap: 8,
-          }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#92400E' }}>
-              🔢 Share OTP with driver:
-            </Text>
-            <Text style={{ fontSize: 20, fontWeight: '900', color: '#92400E', letterSpacing: 4 }}>
-              {otpCode}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={{
-              backgroundColor: otpVerified ? COLORS.primary : '#1E293B',
-              paddingVertical: 12, borderRadius: 14, alignItems: 'center',
-              flexDirection: 'row', justifyContent: 'center', gap: 8,
-            }}
-            activeOpacity={0.85}
-            onPress={() => {
-              if (!otpVerified) setIsOtpModalOpen(true);
-            }}
-          >
-            {otpVerified ? (
-              <>
-                <ShieldCheck size={16} color="#FFF" />
-                <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>✅ OTP Verified — Driver Confirmed</Text>
-              </>
-            ) : (
-              <>
-                <ShieldCheck size={16} color="#FFF" />
-                <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Verify Driver OTP</Text>
-              </>
-            )}
+            <Shield size={16} color="#2563EB" fill="#2563EB" />
+            <Text style={styles.safetyPillText}>Safety</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* EMT Direct Message Modal */}
+      {/* 📱 Bottom Sheet Card (Pixel-Perfect Clone of Reference Screenshot) */}
+      <View style={styles.bottomSheetWrapper}>
+        {/* Drag Handle */}
+        <View style={styles.dragHandleContainer}>
+          <View style={styles.dragHandle} />
+        </View>
+
+        {/* 🔷 Blue Top Banner: "Walk to your pickup-point" */}
+        <View style={styles.blueHeaderBanner}>
+          <Text style={styles.blueHeaderBannerText}>
+            {isEnRouteToHospital ? 'En route to Emergency Hospital' : 'Walk to your pickup-point'}
+          </Text>
+
+          {/* White Card nested inside blue header: "Pickup in 2 mins" */}
+          <View style={styles.etaWhiteCard}>
+            <Text style={styles.etaMainTitle}>
+              Pickup in <Text style={styles.etaHighlightGreen}>{etaMinutesRemaining} mins</Text>
+            </Text>
+            <Text style={styles.etaSubtitle}>
+              Captain {Math.max(120, etaSecondsRemaining * 3)} m away
+            </Text>
+          </View>
+        </View>
+
+        {/* 🔢 PIN / OTP Section (Matching Screenshot: "Start your order with PIN [2][9][7][9]") */}
+        <View style={styles.pinSectionRow}>
+          <Text style={styles.pinSectionLabel}>Start your order with PIN</Text>
+          <View style={styles.pinBoxesContainer}>
+            {pinDigits.map((digit, index) => (
+              <View key={index} style={styles.pinSingleBox}>
+                <Text style={styles.pinDigitText}>{digit}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* 👨‍✈️ Captain / Driver Card (Matching Screenshot) */}
+        <View style={styles.captainCard}>
+          {/* Top Recommendation Banner */}
+          <View style={styles.captainHeaderRow}>
+            <View style={styles.mascotAvatar}>
+              <Text style={{ fontSize: 22 }}>👨‍⚕️</Text>
+            </View>
+            <Text style={styles.captainRecommendText}>
+              This is the best captain for you, right now.
+            </Text>
+          </View>
+
+          {/* Vehicle & Driver Details */}
+          <View style={styles.driverInfoBody}>
+            <View style={styles.vehicleDetailsCol}>
+              <Text style={styles.vehicleNumberText}>
+                {driver.ambulanceNumber.replace(/\s+/g, '')}
+              </Text>
+              <Text style={styles.vehicleModelText}>
+                {driver.ambulanceModel.toUpperCase()}
+              </Text>
+              <Text style={styles.driverNameText}>
+                {driver.name}
+              </Text>
+            </View>
+
+            {/* Driver Photo with "Never Cancels ⭐" badge */}
+            <View style={styles.driverPhotoContainer}>
+              <Image
+                source={{ uri: driver.photoUrl }}
+                style={styles.driverPhoto}
+              />
+              <View style={styles.neverCancelsBadge}>
+                <Text style={styles.neverCancelsBadgeText}>Never Cancels</Text>
+                <View style={styles.starCircle}>
+                  <Text style={{ fontSize: 8, color: '#FFFFFF' }}>★</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* 💬 Message Captain Pill Input (Matching Screenshot) */}
+          <TouchableOpacity
+            style={styles.messageCaptainPill}
+            activeOpacity={0.85}
+            onPress={() => setIsChatOpen(true)}
+          >
+            <Phone size={16} color={COLORS.textPrimary} style={{ marginRight: 8 }} />
+            <Text style={styles.messageCaptainText}>
+              Message {driver.name.split(' ')[0]}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 📍 Bottom Footer: "Pickup From" & "Trip Details" Button */}
+        <View style={styles.footerRow}>
+          <View style={styles.pickupAddressCol}>
+            <Text style={styles.pickupFromLabel}>Pickup From</Text>
+            <Text style={styles.pickupAddressText} numberOfLines={1}>
+              {pickupLocation.address || 'Tower 4, Jaypee Greens Wish Town, Sector 128...'}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.tripDetailsBtn}
+            activeOpacity={0.85}
+            onPress={() => setIsTripDetailsOpen(true)}
+          >
+            <Text style={styles.tripDetailsBtnText}>Trip Details</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* 💬 EMT Direct Message Modal */}
       <Modal visible={isChatOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>EMT Rajesh Kumar (Direct Line)</Text>
+              <Text style={styles.modalTitle}>EMT {driver.name} (Direct Line)</Text>
               <TouchableOpacity onPress={() => setIsChatOpen(false)}>
                 <X size={20} color={COLORS.textPrimary} />
               </TouchableOpacity>
@@ -278,23 +341,160 @@ export const LiveTrackingScreen: React.FC = () => {
         </View>
       </Modal>
 
-      {/* Pre-Submit Patient Vitals Modal */}
-      <Modal visible={isVitalsModalOpen} animationType="slide" transparent>
+      {/* 🛡️ Emergency Safety Modal */}
+      <Modal visible={isSafetyModalOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Pre-Submit Patient Vitals</Text>
-              <TouchableOpacity onPress={() => setIsVitalsModalOpen(false)}>
+              <Text style={styles.modalTitle}>SaveLife Emergency Safety Toolkit</Text>
+              <TouchableOpacity onPress={() => setIsSafetyModalOpen(false)}>
                 <X size={20} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
 
             <View style={{ padding: 16, gap: 12 }}>
-              <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
-                Transmitting patient vitals in advance allows the oncoming paramedic team to prepare oxygen or ventilator equipment before arrival.
-              </Text>
+              <TouchableOpacity
+                style={styles.safetyOptionCard}
+                onPress={() => {
+                  setIsSafetyModalOpen(false);
+                  setIsVitalsModalOpen(true);
+                }}
+              >
+                <HeartPulse size={20} color={COLORS.alertRed} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyOptionTitle}>Pre-Submit Patient Vitals</Text>
+                  <Text style={styles.safetyOptionSub}>Transmit pulse, oxygen & condition to oncoming EMT</Text>
+                </View>
+              </TouchableOpacity>
 
-              {['Conscious & Breathing', 'Unconscious but Breathing', 'Difficulty Breathing', 'Severe Hemorrhage / Bleeding'].map((status) => (
+              <TouchableOpacity
+                style={styles.safetyOptionCard}
+                onPress={handleShareTrip}
+              >
+                <Share2 size={20} color="#2563EB" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.safetyOptionTitle}>Share Live Tracking Link</Text>
+                  <Text style={styles.safetyOptionSub}>Send real-time GPS coordinates to family</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.safetyOptionCard, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                onPress={() => {
+                  setIsSafetyModalOpen(false);
+                  Linking.openURL('tel:112');
+                }}
+              >
+                <PhoneCall size={20} color={COLORS.alertRed} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.safetyOptionTitle, { color: COLORS.alertRed }]}>Dial 112 / Police Hotline</Text>
+                  <Text style={styles.safetyOptionSub}>Direct national emergency response</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 📋 Trip Details & Cancellation Modal */}
+      <Modal visible={isTripDetailsOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Emergency Trip Details</Text>
+              <TouchableOpacity onPress={() => setIsTripDetailsOpen(false)}>
+                <X size={20} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 16, gap: 14 }}>
+              <View style={styles.tripDetailRow}>
+                <Text style={styles.tripDetailLabel}>Booking ID:</Text>
+                <Text style={styles.tripDetailValue}>#{activeBookingId || 'BK-8821'}</Text>
+              </View>
+
+              <View style={styles.tripDetailRow}>
+                <Text style={styles.tripDetailLabel}>Ambulance Service:</Text>
+                <Text style={styles.tripDetailValue}>
+                  {selectedAmbulanceType === 'als' ? 'Advanced Life Support (ALS ICU)' : 'Basic Life Support (BLS)'}
+                </Text>
+              </View>
+
+              <View style={styles.tripDetailRow}>
+                <Text style={styles.tripDetailLabel}>Destination Hospital:</Text>
+                <Text style={styles.tripDetailValue}>{selectedHospital?.name || 'Jaypee Hospital (Sector 128)'}</Text>
+              </View>
+
+              <View style={styles.tripDetailRow}>
+                <Text style={styles.tripDetailLabel}>Estimated Fare:</Text>
+                <Text style={[styles.tripDetailValue, { color: COLORS.primaryDark, fontWeight: '800' }]}>
+                  {fareCalculation?.formattedTotal || '₹280'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.cancelTripBtn}
+                activeOpacity={0.88}
+                onPress={() => {
+                  setIsTripDetailsOpen(false);
+                  setShowCancelConfirm(true);
+                }}
+              >
+                <Text style={styles.cancelTripBtnText}>Cancel Emergency Ambulance</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ❌ 5-Minute Arrival Cancellation Protection Modal */}
+      <Modal visible={showCancelConfirm} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.cancelAlertIconBox}>
+              <ShieldAlert size={36} color={COLORS.alertRed} />
+            </View>
+
+            <Text style={styles.cancelAlertTitle}>Ambulance is 5 Mins Away</Text>
+            <Text style={styles.cancelAlertSub}>
+              🚑 Paramedic unit {driver.ambulanceNumber} is speeding towards your pickup point. Are you sure you want to cancel?
+            </Text>
+
+            <TouchableOpacity
+              style={styles.keepBookingBtn}
+              activeOpacity={0.88}
+              onPress={() => setShowCancelConfirm(false)}
+            >
+              <Text style={styles.keepBookingBtnText}>Keep Booking — Ambulance Aa Rahi Hai</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.confirmCancelBtn}
+              activeOpacity={0.88}
+              onPress={() => {
+                setShowCancelConfirm(false);
+                cancelActiveBooking();
+              }}
+            >
+              <Text style={styles.confirmCancelBtnText}>Cancel Anyway ❌</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 🩺 Pre-Submit Vitals Modal */}
+      <Modal visible={isVitalsModalOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pre-Submit Patient Condition</Text>
+              <TouchableOpacity onPress={() => setIsVitalsModalOpen(false)}>
+                <X size={20} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 16, gap: 10 }}>
+              {['Conscious & Breathing', 'Unconscious but Breathing', 'Severe Chest Pain (Cardiac)', 'Difficulty Breathing (Asthma/O2)', 'Severe Bleeding / Trauma'].map((status) => (
                 <TouchableOpacity
                   key={status}
                   style={[
@@ -318,119 +518,10 @@ export const LiveTrackingScreen: React.FC = () => {
                 style={styles.transmitBtn}
                 onPress={() => {
                   setIsVitalsModalOpen(false);
-                  Alert.alert('Vitals Transmitted', `EMT unit updated with condition: ${patientStatus}`);
+                  Alert.alert('Vitals Transmitted', `Paramedic unit updated: ${patientStatus}`);
                 }}
               >
                 <Text style={styles.transmitBtnText}>Transmit to Paramedic Unit</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 🔢 OTP Verification Modal - Driver ka OTP verify karo */}
-      <Modal visible={isOtpModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🔐 Verify Driver OTP</Text>
-              <TouchableOpacity onPress={() => { setIsOtpModalOpen(false); setOtpInput(''); setOtpError(false); }}>
-                <X size={20} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ padding: 20, gap: 16 }}>
-              <Text style={{ fontSize: 13, color: COLORS.textSecondary, textAlign: 'center' }}>
-                Driver ko apna 4-digit OTP bataiye. Phir yahan enter karein confirm karne ke liye.
-              </Text>
-
-              <TextInput
-                style={{
-                  height: 56, borderRadius: 16, borderWidth: 2,
-                  borderColor: otpError ? COLORS.alertRed : COLORS.cardBorder,
-                  textAlign: 'center', fontSize: 28, fontWeight: '900',
-                  letterSpacing: 12, color: COLORS.textPrimary,
-                }}
-                placeholder="• • • •"
-                placeholderTextColor={COLORS.textPlaceholder}
-                value={otpInput}
-                onChangeText={(t) => { setOtpInput(t); setOtpError(false); }}
-                keyboardType="number-pad"
-                maxLength={4}
-                autoFocus
-              />
-
-              {otpError && (
-                <Text style={{ color: COLORS.alertRed, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
-                  ❌ Galat OTP! Phir se try karein.
-                </Text>
-              )}
-
-              <TouchableOpacity
-                style={{
-                  backgroundColor: COLORS.primary, paddingVertical: 14,
-                  borderRadius: 16, alignItems: 'center',
-                }}
-                onPress={() => {
-                  if (otpInput === otpCode) {
-                    setOtpVerified(true);
-                    setIsOtpModalOpen(false);
-                    setOtpInput('');
-                    setOtpError(false);
-                  } else {
-                    setOtpError(true);
-                  }
-                }}
-              >
-                <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>Verify OTP ✅</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ❌ Cancel Confirmation Modal - "Ambulance aa rahi hai, cancel karoge?" */}
-      <Modal visible={showCancelConfirm} animationType="fade" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: 20 }]}>
-            <View style={{ padding: 24, alignItems: 'center', gap: 16 }}>
-              <View style={{
-                width: 64, height: 64, borderRadius: 32,
-                backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <ShieldAlert size={32} color={COLORS.alertRed} />
-              </View>
-
-              <Text style={{ fontSize: 18, fontWeight: '800', color: COLORS.textPrimary, textAlign: 'center' }}>
-                Ambulance Already Dispatched
-              </Text>
-
-              <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20 }}>
-                🚑 Ambulance 5 minute mein aapke paas pahunch jayegi. Kya aap sure hain ki cancel karna hai?
-              </Text>
-
-              <TouchableOpacity
-                style={{
-                  backgroundColor: COLORS.primary, paddingVertical: 14,
-                  borderRadius: 16, alignItems: 'center', width: '100%',
-                }}
-                onPress={() => setShowCancelConfirm(false)}
-              >
-                <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>🚑 Keep Booking — Ambulance Aa Rahi Hai</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#FEF2F2', paddingVertical: 14,
-                  borderRadius: 16, alignItems: 'center', width: '100%',
-                  borderWidth: 1, borderColor: '#FECACA',
-                }}
-                onPress={() => {
-                  setShowCancelConfirm(false);
-                  cancelActiveBooking();
-                }}
-              >
-                <Text style={{ color: COLORS.alertRed, fontSize: 14, fontWeight: '700' }}>Cancel Anyway ❌</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -447,22 +538,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mapContainer: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    position: 'relative',
   },
-  topSafeArea: {
+  topBarSafe: {
     position: 'absolute',
     top: 10,
     left: 14,
-    right: 14,
-    zIndex: 25,
+    zIndex: 30,
   },
-  topHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  backBtn: {
+  floatingBackBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
@@ -472,94 +557,325 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  floatingPickupTag: {
+    position: 'absolute',
+    top: '32%',
+    left: '20%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    zIndex: 10,
   },
-  speedometerPill: {
+  floatingPickupTagText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  mapFloatingActions: {
+    position: 'absolute',
+    bottom: 24,
+    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    zIndex: 25,
+  },
+  shareRoundBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  safetyPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  safetyPillText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  bottomSheetWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 10,
+    elevation: 12,
   },
-  liveGreenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
+  dragHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 6,
   },
-  speedText: {
-    fontSize: 11,
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+  },
+  blueHeaderBanner: {
+    backgroundColor: '#1E40AF',
+    borderRadius: 14,
+    paddingTop: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    marginBottom: 12,
+  },
+  blueHeaderBannerText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  etaWhiteCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  etaMainTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  etaHighlightGreen: {
+    color: '#15803D',
+    fontWeight: '900',
+  },
+  etaSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  pinSectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginBottom: 12,
+  },
+  pinSectionLabel: {
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
-  emergencyIdBadge: {
+  pinBoxesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORS.primaryDark,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    gap: 6,
   },
-  emergencyIdText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  quickBar: {
-    flexDirection: 'row',
-    gap: 8,
+  pinSingleBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#94A3B8',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  quickBarBtn: {
+  pinDigitText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+  },
+  captainCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  captainHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 8,
+    marginBottom: 10,
   },
-  quickBarBtnText: {
+  mascotAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  captainRecommendText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  driverInfoBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  vehicleDetailsCol: {
+    flex: 1,
+  },
+  vehicleNumberText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+    letterSpacing: 0.5,
+  },
+  vehicleModelText: {
     fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  driverNameText: {
+    fontSize: 12,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  driverPhotoContainer: {
+    alignItems: 'center',
+    position: 'relative',
+  },
+  driverPhoto: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  neverCancelsBadge: {
+    position: 'absolute',
+    bottom: -6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1,
+    borderColor: '#C084FC',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 3,
+  },
+  neverCancelsBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#7E22CE',
+  },
+  starCircle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#7E22CE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messageCaptainPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+  },
+  messageCaptainText: {
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
-  bottomCardWrapper: {
-    position: 'absolute',
-    bottom: 16,
-    left: 14,
-    right: 14,
-    zIndex: 20,
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+    gap: 12,
+  },
+  pickupAddressCol: {
+    flex: 1,
+  },
+  pickupFromLabel: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+  },
+  pickupAddressText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginTop: 1,
+  },
+  tripDetailsBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  tripDetailsBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '60%',
     paddingBottom: 24,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -567,15 +883,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
   chatScroll: {
-    maxHeight: 220,
+    maxHeight: 280,
   },
   chatMsg: {
     maxWidth: '80%',
@@ -587,7 +903,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   chatMsgDriver: {
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: '#F1F5F9',
     alignSelf: 'flex-start',
   },
   chatMsgText: {
@@ -601,45 +917,151 @@ const styles = StyleSheet.create({
   },
   chatMsgTime: {
     fontSize: 9,
-    color: 'rgba(0,0,0,0.4)',
-    alignSelf: 'flex-end',
+    color: '#94A3B8',
     marginTop: 4,
+    alignSelf: 'flex-end',
   },
   chatInputRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 8,
     alignItems: 'center',
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    gap: 8,
   },
   chatInput: {
     flex: 1,
-    height: 42,
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 21,
+    height: 40,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
     paddingHorizontal: 14,
     fontSize: 13,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: '#E2E8F0',
   },
   sendChatBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  vitalsOption: {
+  safetyOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.cardBorder,
-    backgroundColor: COLORS.surfaceLight,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    gap: 12,
+  },
+  safetyOptionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  safetyOptionSub: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  tripDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  tripDetailLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  tripDetailValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  cancelTripBtn: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  cancelTripBtnText: {
+    color: COLORS.alertRed,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cancelAlertIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginTop: 16,
+  },
+  cancelAlertTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  cancelAlertSub: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 16,
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  keepBookingBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 13,
+    borderRadius: 14,
+    marginHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  keepBookingBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  confirmCancelBtn: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginHorizontal: 16,
+    alignItems: 'center',
+  },
+  confirmCancelBtnText: {
+    color: COLORS.alertRed,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  vitalsOption: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   vitalsOptionSelected: {
-    borderColor: COLORS.alertRed,
-    backgroundColor: COLORS.alertRedLight,
+    backgroundColor: '#ECFDF5',
+    borderColor: COLORS.primary,
   },
   vitalsOptionText: {
     fontSize: 13,
@@ -647,20 +1069,19 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   vitalsOptionTextSelected: {
-    color: COLORS.alertRed,
+    color: COLORS.primaryDark,
     fontWeight: '800',
   },
   transmitBtn: {
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.alertRed,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 8,
   },
   transmitBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
 });
