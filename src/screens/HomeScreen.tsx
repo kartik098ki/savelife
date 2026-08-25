@@ -437,6 +437,28 @@ export function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* 🚨 Bottom Book Emergency Ambulance CTA Banner */}
+        <View style={styles.homeBottomFloatingBar}>
+          <TouchableOpacity
+            style={styles.homeBookAmbulanceBtn}
+            activeOpacity={0.88}
+            onPress={() => startBookingFlow(undefined, 'als')}
+          >
+            <View style={styles.homeBookBtnLeft}>
+              <View style={styles.homeBookIconBox}>
+                <Truck size={20} color="#FFFFFF" />
+              </View>
+              <View>
+                <Text style={styles.homeBookBtnTitle}>Book Emergency Ambulance</Text>
+                <Text style={styles.homeBookBtnSub}>From ₹100 • 3–4 mins response in Sector 128</Text>
+              </View>
+            </View>
+            <View style={styles.homeBookArrowBox}>
+              <ChevronRight size={18} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Bottom Nav Spacer */}
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -1230,6 +1252,59 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
+  },
+  homeBottomFloatingBar: {
+    paddingHorizontal: 14,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  homeBookAmbulanceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.alertRed,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: COLORS.alertRed,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  homeBookBtnLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  homeBookIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeBookBtnTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+  },
+  homeBookBtnSub: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  homeBookArrowBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bottomPadding: {
     height: 20,
