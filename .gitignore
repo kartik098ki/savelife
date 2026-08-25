@@ -1,0 +1,30 @@
+# 🚫 Git Ignore - Yeh files GitHub pe nahi jayengi
+
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Environment variables - API keys safe rakhne ke liye
+.env
+.env.local
+
+# OS files
+.DS_Store
+*.swp
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Build outputs
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
