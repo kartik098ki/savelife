@@ -139,13 +139,6 @@ export const DispatchSearchScreen: React.FC = () => {
           Destination: {selectedHospital?.name || 'Jaypee Hospital (Sector 128)'}
         </Text>
 
-        {/* 🔢 Generated Security OTP Pill */}
-        <View style={styles.otpBanner}>
-          <Text style={styles.otpLabel}>Your Trip OTP:</Text>
-          <Text style={styles.otpValue}>{otpCode || '4829'}</Text>
-          <Text style={styles.otpHint}>(Share with driver on arrival)</Text>
-        </View>
-
         {/* 📡 Live Dispatch Steps Log */}
         <View style={styles.logContainer}>
           {dispatchLogs.map((log, idx) => (

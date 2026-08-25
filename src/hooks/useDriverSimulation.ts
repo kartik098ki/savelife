@@ -97,6 +97,13 @@ export function useDriverSimulation() {
         const heading = calculateBearing(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
         const secondsRemaining = Math.max(0, Math.round((1 - progress) * totalDurationSeconds));
 
+        // 🛣️ Dynamically shrink the route line: only keep from current ambulance position to doorstep!
+        const remainingRoute = [
+          { latitude: lat, longitude: lng },
+          ...currentPoints.slice(upperIndex),
+        ];
+        setRouteCoordinates(remainingRoute);
+
         updateDriverPosition({ latitude: lat, longitude: lng }, heading, progress, secondsRemaining);
 
         // Transition events
@@ -105,6 +112,7 @@ export function useDriverSimulation() {
 
           if (tripPhase === 'driver_to_pickup') {
             soundService.playDispatchSuccess();
+            setRouteCoordinates([]);
             setTripPhase('pickup_wait');
             setBookingStatus('driver_arriving');
           } else if (tripPhase === 'en_route_hospital') {

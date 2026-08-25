@@ -294,12 +294,25 @@ export const LiveTrackingScreen: React.FC = () => {
           {/* Vehicle & Driver Details */}
           <View style={styles.driverInfoBody}>
             <View style={styles.vehicleDetailsCol}>
-              <Text style={styles.vehicleNumberText}>
-                {driver.ambulanceNumber.replace(/\s+/g, '')}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <Text style={styles.vehicleNumberText}>
+                  {driver.ambulanceNumber.replace(/\s+/g, '')}
+                </Text>
+                <View style={[styles.typePillBadge, selectedAmbulanceType === 'als' ? styles.typePillAls : styles.typePillBls]}>
+                  <Text style={[styles.typePillText, selectedAmbulanceType === 'als' ? { color: COLORS.alertRed } : { color: COLORS.primaryDark }]}>
+                    {selectedAmbulanceType === 'als' ? 'ALS ICU' : 'BLS'}
+                  </Text>
+                </View>
+              </View>
+              
               <Text style={styles.vehicleModelText}>
-                {driver.ambulanceModel.toUpperCase()}
+                {selectedAmbulanceType === 'als' ? 'FORCE TRAVELLER 3350 ICU' : 'TATA WINGER BLS EMERGENCY'}
               </Text>
+              
+              <Text style={styles.equipmentSummaryText}>
+                {selectedAmbulanceType === 'als' ? 'Ventilator • Defibrillator • 12-Lead ECG' : 'Hydraulic Stretcher • 2000L O2 Kit'}
+              </Text>
+
               <Text style={styles.driverNameText}>
                 {driver.name}
               </Text>
@@ -868,11 +881,36 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     letterSpacing: 0.5,
   },
+  typePillBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  typePillAls: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  typePillBls: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#BBF7D0',
+  },
+  typePillText: {
+    fontSize: 9,
+    fontWeight: '900',
+  },
   vehicleModelText: {
     fontSize: 11,
     color: COLORS.textSecondary,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 1,
+  },
+  equipmentSummaryText: {
+    fontSize: 10,
+    color: COLORS.primaryDark,
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 2,
   },
   driverNameText: {
     fontSize: 12,
