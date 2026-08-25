@@ -1,7 +1,7 @@
-// 🏠 SaveLife Home Screen - Map, Emergency Dispatch, Blinkit Staff & Facilities
-// 1-Tap Emergency Dispatch, Sector 128 Noida Live GPS, Siren toggle & On-board Telemetry
+// 🏠 SaveLife Home Screen - Hyper-Modern Emergency Dispatch & Hospital Discovery
+// Sector 128 Noida Live GPS, Siren Audio, 1-Tap SOS, Hospital Carousel, Blinkit Staff & Facilities
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
   Animated,
   Platform,
   SafeAreaView,
-  Alert,
+  Image,
+  Linking,
 } from 'react-native';
 import {
   Truck,
@@ -36,6 +37,11 @@ import {
   Volume2,
   VolumeX,
   PhoneCall,
+  Star,
+  BedDouble,
+  Clock,
+  Sparkles,
+  Radio,
 } from 'lucide-react-native';
 
 import { LiveMapView } from '../components/map/LiveMapView';
@@ -43,15 +49,30 @@ import { useLiveLocation } from '../hooks/useLiveLocation';
 import { useBookingStore } from '../store/useBookingStore';
 import { COLORS } from '../constants/colors';
 import { soundService } from '../services/soundService';
+import { getNearbyHospitalsMock, Hospital } from '../services/mockDataService';
+import { fetchNearbyHospitals } from '../services/googleMapsService';
 
 const { width, height } = Dimensions.get('window');
-const MAP_HEIGHT = height * 0.42;
+const MAP_HEIGHT = height * 0.40;
 
 export function HomeScreen() {
   // 📍 User live coordinates (Sector 128, Noida default)
   const { location } = useLiveLocation();
   const { setCurrentScreen, startBookingFlow } = useBookingStore();
   const [isSirenPlaying, setIsSirenPlaying] = useState(false);
+  const [nearbyHospitals, setNearbyHospitals] = useState<Hospital[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const list = await fetchNearbyHospitals(location.latitude, location.longitude, 6000);
+        setNearbyHospitals(list.slice(0, 4));
+      } catch {
+        setNearbyHospitals(getNearbyHospitalsMock(location.latitude, location.longitude).slice(0, 4));
+      }
+    }
+    load();
+  }, [location]);
 
   const toggleSirenSound = () => {
     if (isSirenPlaying) {
@@ -66,6 +87,10 @@ export function HomeScreen() {
   const handleSosEmergency = () => {
     soundService.playSonarPing();
     startBookingFlow(undefined, 'als');
+  };
+
+  const handleCallHelpline = () => {
+    Linking.openURL('tel:112');
   };
 
   return (
@@ -84,9 +109,9 @@ export function HomeScreen() {
           onPress={toggleSirenSound}
         >
           {isSirenPlaying ? (
-            <Volume2 size={18} color="#FFFFFF" />
+            <Volume2 size={16} color="#FFFFFF" />
           ) : (
-            <VolumeX size={18} color={COLORS.textPrimary} />
+            <VolumeX size={16} color={COLORS.textPrimary} />
           )}
           <Text style={[styles.sirenBtnText, isSirenPlaying && { color: '#FFFFFF' }]}>
             {isSirenPlaying ? 'SIREN ON' : 'Siren Audio'}
@@ -99,9 +124,15 @@ export function HomeScreen() {
           activeOpacity={0.88}
           onPress={handleSosEmergency}
         >
-          <Zap size={18} color="#FFFFFF" />
-          <Text style={styles.sosFloatingBtnText}>SOS DISPATCH</Text>
+          <Zap size={16} color="#FFFFFF" />
+          <Text style={styles.sosFloatingBtnText}>SOS 112</Text>
         </TouchableOpacity>
+
+        {/* 📡 Live Patrol Telemetry Badge */}
+        <View style={styles.patrolBadge}>
+          <View style={styles.patrolPulseDot} />
+          <Text style={styles.patrolBadgeText}>3 ALS Units in Sector 128</Text>
+        </View>
         
         {/* 📍 Reverse-Geocoded Sector 128 Address Chip */}
         <TouchableOpacity
@@ -110,7 +141,9 @@ export function HomeScreen() {
           onPress={() => setCurrentScreen('destination_search')}
         >
           <View style={styles.addressChip}>
-            <View style={styles.greenDot} />
+            <View style={styles.greenDotRing}>
+              <View style={styles.greenDotInner} />
+            </View>
             <View style={styles.addressTextContainer}>
               <Text style={styles.addressTitle}>Current Emergency Pickup</Text>
               <Text style={styles.addressSubtitle} numberOfLines={1}>
@@ -129,30 +162,77 @@ export function HomeScreen() {
         showsVerticalScrollIndicator={false}
         bounces={true}
       >
+        {/* Drag Handle */}
         <View style={styles.dragHandleContainer}>
           <View style={styles.dragHandle} />
         </View>
 
-        {/* 🔍 Search Pill "Where do you want to go?" */}
+        {/* 🔍 Search Pill "Where is the emergency?" */}
         <TouchableOpacity 
           style={styles.searchPill}
           activeOpacity={0.88}
           onPress={() => setCurrentScreen('destination_search')}
         >
-          <Search size={22} color={COLORS.primary} style={styles.searchIcon} />
-          <Text style={styles.searchText}>Where do you want to go?</Text>
+          <Search size={20} color={COLORS.primary} style={styles.searchIcon} />
+          <Text style={styles.searchText}>Where is the emergency?</Text>
+          <View style={styles.searchArrowCircle}>
+            <ChevronRight size={16} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
+
+        {/* ⚡ Quick Sector 128 Hospital Destination Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickHospitalsScroll}
+        >
+          <TouchableOpacity
+            style={styles.quickHospitalChip}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (nearbyHospitals.length > 0) startBookingFlow(nearbyHospitals[0]);
+              else setCurrentScreen('destination_search');
+            }}
+          >
+            <MapPin size={12} color={COLORS.primaryDark} />
+            <Text style={styles.quickHospitalChipText}>Jaypee Hospital (0.8km)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickHospitalChip}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (nearbyHospitals.length > 1) startBookingFlow(nearbyHospitals[1]);
+              else setCurrentScreen('destination_search');
+            }}
+          >
+            <MapPin size={12} color={COLORS.primaryDark} />
+            <Text style={styles.quickHospitalChipText}>Yatharth Hospital (2.1km)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickHospitalChip}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (nearbyHospitals.length > 2) startBookingFlow(nearbyHospitals[2]);
+              else setCurrentScreen('destination_search');
+            }}
+          >
+            <MapPin size={12} color={COLORS.primaryDark} />
+            <Text style={styles.quickHospitalChipText}>Felix Hospital (2.8km)</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
         {/* ⚡ Availability Telemetry Header */}
         <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>Get Help Fast</Text>
+          <Text style={styles.headerTitle}>Emergency Response</Text>
           <View style={styles.availabilityPill}>
-            <Zap size={14} color={COLORS.primaryDark} fill={COLORS.primaryDark} />
-            <Text style={styles.availabilityText}>4 ALS Ambulances active in Sector 128</Text>
+            <View style={styles.liveGreenBeacon} />
+            <Text style={styles.availabilityText}>Avg response: <Text style={{ fontWeight: '900' }}>3.4 mins</Text> in Wish Town</Text>
           </View>
         </View>
 
-        {/* 🚑 Dual Service Cards (Emergency Ambulance + Find Hospital) */}
+        {/* 🚑 Dual Hero Service Cards (Emergency Ambulance + Find Hospital) */}
         <View style={styles.serviceCardsContainer}>
           {/* Card A: Emergency Ambulance */}
           <TouchableOpacity 
@@ -161,11 +241,15 @@ export function HomeScreen() {
             onPress={() => setCurrentScreen('hospital_select')}
           >
             <View style={styles.badgeRed}>
-              <Text style={styles.badgeTextRed}>Book Now</Text>
+              <Text style={styles.badgeTextRed}>3–4 MIN</Text>
             </View>
             <Truck size={32} color={COLORS.alertRed} style={styles.cardIcon} />
             <Text style={styles.serviceTitle}>Emergency{'\n'}Ambulance</Text>
-            <Text style={styles.serviceSubtitle}>Reaches in 4–6 mins</Text>
+            <Text style={styles.serviceSubtitle}>ICU on Wheels • Ventilator</Text>
+            
+            <View style={styles.cardCtaRow}>
+              <Text style={styles.cardCtaTextRed}>Dispatch Now ➔</Text>
+            </View>
           </TouchableOpacity>
 
           {/* Card B: Find Hospital */}
@@ -175,61 +259,137 @@ export function HomeScreen() {
             onPress={() => setCurrentScreen('hospital_list')}
           >
             <View style={styles.badgeGreen}>
-              <Text style={styles.badgeTextGreen}>Nearby</Text>
+              <Text style={styles.badgeTextGreen}>18 BEDS LIVE</Text>
             </View>
             <Building2 size={32} color={COLORS.primary} style={styles.cardIcon} />
             <Text style={styles.serviceTitle}>Find{'\n'}Hospital</Text>
-            <Text style={styles.serviceSubtitle}>Live ICU bed status</Text>
+            <Text style={styles.serviceSubtitle}>Live ICU & Doctor Roster</Text>
+            
+            <View style={styles.cardCtaRow}>
+              <Text style={styles.cardCtaTextGreen}>View Centers ➔</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
         {/* 🏷️ Instant Emergency Category Tags (Cardiac, Trauma, Burn, Elderly) */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.subSectionTitle}>Instant Emergency Dispatch</Text>
+          <Text style={styles.subSectionSubtitle}>Pre-configured ICU units</Text>
+        </View>
+
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
           contentContainerStyle={styles.tagsScrollContent}
           style={styles.tagsContainer}
         >
-          <EmergencyTag icon={<HeartPulse size={16} color={COLORS.alertRed} />} text="Cardiac ICU (ALS)" onPress={() => startBookingFlow(undefined, 'als')} />
-          <EmergencyTag icon={<ShieldAlert size={16} color={COLORS.textPrimary} />} text="Trauma Center" onPress={() => startBookingFlow(undefined, 'als')} />
-          <EmergencyTag icon={<Flame size={16} color="#F97316" />} text="Burn Care Unit" onPress={() => startBookingFlow(undefined, 'als')} />
-          <EmergencyTag icon={<UserCheck size={16} color={COLORS.primary} />} text="Elderly Transfer (BLS)" onPress={() => startBookingFlow(undefined, 'bls')} />
+          <EmergencyTag icon={<HeartPulse size={15} color={COLORS.alertRed} />} text="Cardiac ICU (ALS)" onPress={() => startBookingFlow(undefined, 'als')} />
+          <EmergencyTag icon={<ShieldAlert size={15} color="#D97706" />} text="Level-1 Trauma" onPress={() => startBookingFlow(undefined, 'als')} />
+          <EmergencyTag icon={<Flame size={15} color="#EA580C" />} text="Burn Care Unit" onPress={() => startBookingFlow(undefined, 'als')} />
+          <EmergencyTag icon={<UserCheck size={15} color={COLORS.primary} />} text="Elderly (BLS)" onPress={() => startBookingFlow(undefined, 'bls')} />
+          <EmergencyTag icon={<Sparkles size={15} color="#7C3AED" />} text="Pediatric ICU" onPress={() => startBookingFlow(undefined, 'als')} />
         </ScrollView>
 
-        {/* 👨‍⚕️ SECTION: Ambulance Staff (Blinkit-style Dark Section) */}
+        {/* 🏥 SECTION: Nearest Verified Sector 128 Hospitals (Live Carousel) */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.subSectionTitle}>Nearest Sector 128 Hospitals</Text>
+          <TouchableOpacity onPress={() => setCurrentScreen('hospital_list')}>
+            <Text style={styles.viewAllText}>View All ({nearbyHospitals.length + 3}) ➔</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.hospitalCarouselScroll}
+        >
+          {nearbyHospitals.map((hospital) => (
+            <TouchableOpacity
+              key={hospital.id}
+              style={styles.hospitalCarouselCard}
+              activeOpacity={0.88}
+              onPress={() => startBookingFlow(hospital)}
+            >
+              <Image
+                source={{ uri: hospital.imageUrl }}
+                style={styles.carouselImage}
+                resizeMode="cover"
+              />
+              <View style={styles.carouselDistanceBadge}>
+                <Text style={styles.carouselDistanceText}>{hospital.distanceKm} km • {hospital.etaMinutes}m</Text>
+              </View>
+
+              <View style={styles.carouselBody}>
+                <Text style={styles.carouselTitle} numberOfLines={1}>{hospital.name}</Text>
+                
+                {/* On Duty Doctor */}
+                <View style={styles.carouselDoctorRow}>
+                  <UserCheck size={12} color={COLORS.primaryDark} />
+                  <Text style={styles.carouselDoctorText} numberOfLines={1}>
+                    {hospital.doctorName}
+                  </Text>
+                </View>
+
+                {/* ICU Beds & Action */}
+                <View style={styles.carouselFooter}>
+                  <View style={styles.carouselBedBadge}>
+                    <BedDouble size={11} color={COLORS.primaryDark} />
+                    <Text style={styles.carouselBedText}>{hospital.icuBedsAvailable} ICU</Text>
+                  </View>
+                  <View style={styles.carouselBookBtn}>
+                    <Text style={styles.carouselBookBtnText}>Book</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* 👨‍⚕️ SECTION: Ambulance Staff (Blinkit Luxury Dark Section) */}
         <View style={styles.darkSection}>
           <View style={styles.darkSectionHeader}>
+            <View style={styles.darkBadgeRow}>
+              <Sparkles size={13} color="#38BDF8" />
+              <Text style={styles.darkBadgeText}>PROFESSIONAL CREW</Text>
+            </View>
             <Text style={styles.darkSectionTitle}>Ambulance Staff</Text>
-            <Text style={styles.darkSectionSubtitle}>Equipped and ready to deliver expert care on the move</Text>
+            <Text style={styles.darkSectionSubtitle}>Equipped and certified to deliver critical ICU care on the road</Text>
           </View>
 
           <View style={styles.staffList}>
             <StaffItem 
-              icon={<Stethoscope size={28} color={COLORS.primary} />}
-              title="Paramedic"
-              subtitle="Provides extensive medical care & IV stabilization"
-              bgColor={COLORS.primaryLight}
+              icon={<Stethoscope size={26} color={COLORS.primary} />}
+              title="Paramedic Lead"
+              subtitle="IV Cannulation, Intubation & Defibrillator Expert"
+              bgColor="#ECFDF5"
+              borderColor="#A7F3D0"
             />
             <StaffItem 
-              icon={<Truck size={28} color="#3B82F6" />}
-              title="Pilot"
-              subtitle="Ensures timely, sirens-cleared & safe transfer"
-              bgColor="#EFF6FF"
+              icon={<Truck size={26} color="#0284C7" />}
+              title="Emergency Pilot"
+              subtitle="Certified High-Speed Green Corridor Driver"
+              bgColor="#F0F9FF"
+              borderColor="#BAE6FD"
             />
             <StaffItem 
-              icon={<Heart size={28} color="#F59E0B" />}
+              icon={<Heart size={26} color="#D97706" />}
               title="Duty Assistant"
-              subtitle="Supports in lifting, stretcher transfer & moving"
-              bgColor="#FEF3C7"
+              subtitle="Hydraulic Stretcher, Patient Lifting & Mobilization"
+              bgColor="#FFFBEB"
+              borderColor="#FDE68A"
             />
           </View>
         </View>
 
-        {/* 🩺 SECTION: On-board Facilities Carousel */}
+        {/* 🩺 SECTION: On-board ICU Facilities Carousel */}
         <View style={[styles.darkSection, styles.darkSectionBottom]}>
           <View style={styles.darkSectionHeader}>
+            <View style={styles.darkBadgeRow}>
+              <Activity size={13} color="#10B981" />
+              <Text style={styles.darkBadgeText}>ADVANCED ICU EQUIPMENT</Text>
+            </View>
             <Text style={styles.darkSectionTitle}>On-board Facilities</Text>
-            <Text style={styles.darkSectionSubtitle}>Equipped with essential ICU life-support tools</Text>
+            <Text style={styles.darkSectionSubtitle}>State-of-the-art life support systems inside every ambulance</Text>
           </View>
 
           <ScrollView 
@@ -239,30 +399,50 @@ export function HomeScreen() {
           >
             <FacilityCard 
               icon={<Activity size={24} color={COLORS.primary} />}
-              text="Stretcher, scoop & wheelchair"
-              detail="Hydraulic shock absorber"
+              text="Hydraulic Shock Stretcher"
+              detail="Spinal scoop + Transit wheelchair"
             />
             <FacilityCard 
-              icon={<Thermometer size={24} color={COLORS.primary} />}
-              text="Instruments to check vitals"
-              detail="Multi-para ECG monitor"
+              icon={<Thermometer size={24} color="#0284C7" />}
+              text="Multi-Para Vitals Monitor"
+              detail="12-Lead ECG + SpO2 + NIBP"
             />
             <FacilityCard 
-              icon={<Pill size={24} color={COLORS.primary} />}
-              text="Essential ICU medicine"
-              detail="Epinephrine, CPR kits"
+              icon={<Pill size={24} color="#D97706" />}
+              text="Essential ACLS Drug Kit"
+              detail="Epinephrine, Atropine, Defib pads"
+            />
+            <FacilityCard 
+              icon={<Zap size={24} color="#DC2626" />}
+              text="Portable Transport Ventilator"
+              detail="High-flow O2 + CPAP/BiPAP modes"
             />
           </ScrollView>
         </View>
 
         {/* 🛡️ Safety & Trust Verification */}
         <View style={styles.trustSection}>
-          <Text style={styles.trustSectionTitle}>Your Safety & Medical Trust</Text>
+          <Text style={styles.trustSectionTitle}>SaveLife Medical Trust & Standards</Text>
           <View style={styles.trustItems}>
-            <TrustItem icon={<MapPin size={20} color={COLORS.primary} />} text="Live GPS Tracked" />
-            <TrustItem icon={<CheckCircle size={20} color={COLORS.primary} />} text="Verified EMTs" />
-            <TrustItem icon={<Shield size={20} color={COLORS.primary} />} text="100% Insured" />
+            <TrustItem icon={<MapPin size={18} color={COLORS.primary} />} text="Live GPS Tracked" />
+            <TrustItem icon={<CheckCircle size={18} color={COLORS.primary} />} text="NABH Certified" />
+            <TrustItem icon={<Shield size={18} color={COLORS.primary} />} text="Zero Surge Rate" />
+            <TrustItem icon={<HeartPulse size={18} color={COLORS.alertRed} />} text="Govt 112 Linked" />
           </View>
+        </View>
+
+        {/* 📞 24/7 Toll-Free Emergency Helpline Banner */}
+        <View style={styles.helplineBanner}>
+          <View style={styles.helplineIconBox}>
+            <PhoneCall size={20} color="#FFFFFF" />
+          </View>
+          <View style={styles.helplineInfo}>
+            <Text style={styles.helplineTitle}>24/7 National Emergency SOS</Text>
+            <Text style={styles.helplineNumber}>Dial 112 / 108 Emergency Control Room</Text>
+          </View>
+          <TouchableOpacity style={styles.callNowBtn} onPress={handleCallHelpline}>
+            <Text style={styles.callNowBtnText}>Call Now</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Bottom Nav Spacer */}
@@ -274,20 +454,32 @@ export function HomeScreen() {
 
 function EmergencyTag({ icon, text, onPress }: { icon: React.ReactNode; text: string; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.tag} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.tag} onPress={onPress} activeOpacity={0.85}>
       {icon}
       <Text style={styles.tagText}>{text}</Text>
     </TouchableOpacity>
   );
 }
 
-function StaffItem({ icon, title, subtitle, bgColor }: { icon: React.ReactNode; title: string; subtitle: string; bgColor: string }) {
+function StaffItem({
+  icon,
+  title,
+  subtitle,
+  bgColor,
+  borderColor,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  bgColor: string;
+  borderColor: string;
+}) {
   return (
     <View style={styles.staffItem}>
-      <View style={[styles.staffAvatar, { backgroundColor: bgColor }]}>
+      <View style={[styles.staffAvatar, { backgroundColor: bgColor, borderColor: borderColor }]}>
         {icon}
         <View style={styles.verifiedBadge}>
-          <CheckCircle size={11} color="#FFF" fill="#3B82F6" />
+          <CheckCircle size={10} color="#FFF" fill="#0284C7" />
         </View>
       </View>
       <View style={styles.staffInfo}>
@@ -322,7 +514,7 @@ function TrustItem({ icon, text }: { icon: React.ReactNode; text: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.surfaceLight,
+    backgroundColor: '#F8FAFC',
   },
   mapContainer: {
     height: MAP_HEIGHT,
@@ -331,8 +523,8 @@ const styles = StyleSheet.create({
   },
   sirenFloatingBtn: {
     position: 'absolute',
-    top: 14,
-    left: 14,
+    top: 12,
+    left: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -357,14 +549,14 @@ const styles = StyleSheet.create({
   },
   sosFloatingBtn: {
     position: 'absolute',
-    top: 14,
-    right: 14,
+    top: 12,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: COLORS.alertRed,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 16,
     shadowColor: COLORS.alertRed,
     shadowOffset: { width: 0, height: 3 },
@@ -379,11 +571,35 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
+  patrolBadge: {
+    position: 'absolute',
+    top: 48,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    zIndex: 15,
+  },
+  patrolPulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  patrolBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   addressChipContainer: {
     position: 'absolute',
-    bottom: 20,
-    left: 14,
-    right: 14,
+    bottom: 16,
+    left: 12,
+    right: 12,
     alignItems: 'center',
     zIndex: 15,
   },
@@ -391,31 +607,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
     width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
   },
-  greenDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: COLORS.primary,
+  greenDotRing: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
+  },
+  greenDotInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
   },
   addressTextContainer: {
     flex: 1,
   },
   addressTitle: {
-    fontSize: 10,
-    color: COLORS.textSecondary,
-    fontWeight: '700',
+    fontSize: 9,
+    color: COLORS.primaryDark,
+    fontWeight: '800',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 1,
   },
   addressSubtitle: {
@@ -428,7 +656,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
-    marginTop: -20,
+    marginTop: -16,
     zIndex: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -437,14 +665,14 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   bottomSheetContent: {
-    paddingBottom: 100,
+    paddingBottom: 90,
   },
   dragHandleContainer: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   dragHandle: {
-    width: 38,
+    width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: COLORS.dragHandle,
@@ -452,61 +680,97 @@ const styles = StyleSheet.create({
   searchPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceLight,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.5,
-    borderColor: COLORS.cardBorder,
-    marginHorizontal: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 20,
-    marginBottom: 18,
+    borderColor: '#E2E8F0',
+    marginHorizontal: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 18,
+    marginBottom: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 2,
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   searchText: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 14,
     color: COLORS.textPrimary,
     fontWeight: '700',
   },
-  headerSection: {
-    paddingHorizontal: 16,
+  searchArrowCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickHospitalsScroll: {
+    paddingHorizontal: 14,
+    gap: 8,
     marginBottom: 14,
   },
+  quickHospitalChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  quickHospitalChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+  headerSection: {
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '900',
     color: COLORS.textPrimary,
-    marginBottom: 6,
+    marginBottom: 4,
     letterSpacing: -0.3,
   },
   availabilityPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: '#F0FDF4',
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#BBF7D0',
+    gap: 6,
+  },
+  liveGreenBeacon: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#10B981',
   },
   availabilityText: {
     fontSize: 11,
     color: COLORS.primaryDark,
-    fontWeight: '800',
-    marginLeft: 6,
+    fontWeight: '700',
   },
   serviceCardsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 18,
-    gap: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    gap: 10,
   },
   serviceCard: {
     flex: 1,
@@ -519,30 +783,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    justifyContent: 'space-between',
+    minHeight: 145,
   },
   emergencyCard: {
-    backgroundColor: COLORS.alertRedLight,
+    backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
   },
   hospitalCard: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: '#A7F3D0',
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
   },
   cardIcon: {
-    marginBottom: 12,
-    marginTop: 6,
+    marginBottom: 8,
+    marginTop: 4,
   },
   serviceTitle: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
     color: COLORS.textPrimary,
-    marginBottom: 4,
-    lineHeight: 20,
+    marginBottom: 3,
+    lineHeight: 19,
   },
   serviceSubtitle: {
     fontSize: 11,
     color: COLORS.textSecondary,
     fontWeight: '600',
+    marginBottom: 8,
+  },
+  cardCtaRow: {
+    marginTop: 'auto',
+  },
+  cardCtaTextRed: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.alertRed,
+  },
+  cardCtaTextGreen: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
   },
   badgeRed: {
     position: 'absolute',
@@ -556,8 +836,7 @@ const styles = StyleSheet.create({
   badgeTextRed: {
     color: '#FFF',
     fontSize: 9,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+    fontWeight: '900',
   },
   badgeGreen: {
     position: 'absolute',
@@ -571,13 +850,35 @@ const styles = StyleSheet.create({
   badgeTextGreen: {
     color: '#FFF',
     fontSize: 9,
+    fontWeight: '900',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  subSectionTitle: {
+    fontSize: 14,
     fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  subSectionSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   tagsContainer: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   tagsScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     gap: 8,
   },
   tag: {
@@ -585,56 +886,162 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: '#E2E8F0',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 12,
-    marginRight: 8,
+    marginRight: 6,
     gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   tagText: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
+  hospitalCarouselScroll: {
+    paddingHorizontal: 14,
+    gap: 12,
+    marginBottom: 20,
+  },
+  hospitalCarouselCard: {
+    width: 170,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  carouselImage: {
+    width: '100%',
+    height: 85,
+    backgroundColor: '#CBD5E1',
+  },
+  carouselDistanceBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  carouselDistanceText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  carouselBody: {
+    padding: 10,
+  },
+  carouselTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  carouselDoctorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  carouselDoctorText: {
+    fontSize: 10,
+    color: COLORS.primaryDark,
+    fontWeight: '600',
+    flex: 1,
+  },
+  carouselFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  carouselBedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  carouselBedText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+  },
+  carouselBookBtn: {
+    backgroundColor: COLORS.alertRed,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  carouselBookBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
   darkSection: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0F172A',
     paddingVertical: 20,
   },
   darkSectionBottom: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   darkSectionHeader: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  darkBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  darkBadgeText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   darkSectionTitle: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   darkSectionSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
     fontWeight: '500',
   },
   staffList: {
-    paddingHorizontal: 16,
-    gap: 14,
+    paddingHorizontal: 14,
+    gap: 12,
   },
   staffItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   staffAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
+    borderWidth: 1.5,
     position: 'relative',
   },
   verifiedBadge: {
@@ -642,9 +1049,9 @@ const styles = StyleSheet.create({
     bottom: -2,
     right: -2,
     backgroundColor: '#FFFFFF',
-    borderRadius: 9,
-    width: 18,
-    height: 18,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -652,56 +1059,58 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   staffTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 2,
   },
   staffSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   facilitiesScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     gap: 10,
   },
   facilityCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    width: 150,
-    marginRight: 10,
+    backgroundColor: '#1E293B',
+    borderRadius: 14,
+    padding: 12,
+    width: 155,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   facilityIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primaryLight,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   facilityText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   facilityDetailText: {
     fontSize: 10,
-    color: COLORS.textSecondary,
+    color: '#94A3B8',
     fontWeight: '500',
   },
   trustSection: {
-    padding: 20,
+    padding: 16,
     backgroundColor: '#FFFFFF',
   },
   trustSectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.textPrimary,
-    marginBottom: 14,
+    marginBottom: 12,
     textAlign: 'center',
   },
   trustItems: {
@@ -713,13 +1122,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   trustText: {
-    marginTop: 6,
-    fontSize: 11,
+    marginTop: 5,
+    fontSize: 10,
     color: COLORS.textSecondary,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
+  helplineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    marginHorizontal: 14,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 10,
+  },
+  helplineIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.alertRed,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helplineInfo: {
+    flex: 1,
+  },
+  helplineTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.alertRed,
+  },
+  helplineNumber: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  callNowBtn: {
+    backgroundColor: COLORS.alertRed,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  callNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
   bottomPadding: {
-    height: 40,
+    height: 20,
   },
 });
