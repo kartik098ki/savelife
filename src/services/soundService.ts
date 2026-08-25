@@ -111,6 +111,14 @@ class EmergencySoundService {
   }
 
   // Emergency SOS Siren tone toggle
+  playEmergencySiren() {
+    this.toggleEmergencySiren(true);
+  }
+
+  stopSiren() {
+    this.toggleEmergencySiren(false);
+  }
+
   toggleEmergencySiren(start: boolean) {
     if (!start) {
       if (this.sirenInterval) {
