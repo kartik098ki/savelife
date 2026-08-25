@@ -1,5 +1,5 @@
-// 🏥 Hospital Selection & Ambulance Booking Screen
-// Sector 128 Noida hospitals, BLS/ALS Ambulance Selector, Live Fare Summary & Route Preview
+// 🏥 Hospital Selection & Instant Ambulance Booking Screen
+// Priority Ambulance Selector (BLS/ALS) & Fare CTA on top, Destination Route Preview, and Sector 128 Hospital Directory
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import { ArrowLeft, Search, Building2, MapPin, X } from 'lucide-react-native';
+import { ArrowLeft, Search, Building2, MapPin, X, Navigation, ShieldCheck } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { useBookingStore } from '../store/useBookingStore';
 import { Hospital, getNearbyHospitalsMock } from '../services/mockDataService';
@@ -22,8 +22,6 @@ import { HospitalItem } from '../components/booking/HospitalItem';
 import { AmbulanceTypeSelector } from '../components/booking/AmbulanceTypeSelector';
 import { FareSummaryCard } from '../components/booking/FareSummaryCard';
 import { LiveMapView } from '../components/map/LiveMapView';
-
-const { height: screenHeight } = Dimensions.get('window');
 
 export const HospitalSelectScreen: React.FC = () => {
   const {
@@ -94,7 +92,7 @@ export const HospitalSelectScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Top Header & Search Bar */}
+        {/* 🔙 Top Header */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backBtn}
@@ -103,6 +101,75 @@ export const HospitalSelectScreen: React.FC = () => {
           >
             <ArrowLeft size={22} color={COLORS.textPrimary} />
           </TouchableOpacity>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Select Ambulance & Care</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              📍 From: {pickupLocation.address?.slice(0, 32) || 'Sector 128, Wish Town'}...
+            </Text>
+          </View>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* ⚡ TOP SECTION 1: Ambulance Type Selection (BLS vs ALS ICU) */}
+          <AmbulanceTypeSelector
+            selectedType={selectedAmbulanceType}
+            distanceKm={selectedHospital?.distanceKm || 0.8}
+            onSelect={setSelectedAmbulanceType}
+          />
+
+          {/* 💰 TOP SECTION 2: Fare Summary & Instant Booking CTA */}
+          {fareCalculation && (
+            <FareSummaryCard
+              fare={fareCalculation}
+              hospitalName={selectedHospital?.name}
+              onBook={handleBook}
+            />
+          )}
+
+          {/* 🏥 SECTION 3: Selected Destination & Mini Route Preview */}
+          {selectedHospital && (
+            <View style={styles.destinationCard}>
+              <View style={styles.destinationCardHeader}>
+                <View style={styles.destinationIconBox}>
+                  <Building2 size={18} color={COLORS.primaryDark} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.destinationTag}>DESTINATION TRAUMA CENTER</Text>
+                  <Text style={styles.destinationName}>{selectedHospital.name}</Text>
+                  <Text style={styles.destinationAddress} numberOfLines={1}>{selectedHospital.address}</Text>
+                </View>
+                <View style={styles.bedBadge}>
+                  <Text style={styles.bedBadgeText}>{selectedHospital.icuBedsAvailable} ICU Beds</Text>
+                </View>
+              </View>
+
+              {/* Mini-Map Preview with Route */}
+              <View style={styles.miniMapContainer}>
+                <LiveMapView
+                  pickupLocation={pickupLocation}
+                  destinationHospital={selectedHospital}
+                  routeCoordinates={routeToHospital?.coordinates}
+                  showPickupPuck={true}
+                  showDestinationMarker={true}
+                  style={styles.miniMap}
+                />
+                <View style={styles.miniMapBadge}>
+                  <MapPin size={12} color="#FFFFFF" />
+                  <Text style={styles.miniMapBadgeText}>Route: {selectedHospital.distanceKm} km • ~{selectedHospital.etaMinutes}m</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* 🔍 SECTION 4: Search & Change Destination Hospital */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Change Destination Hospital</Text>
+            <Text style={styles.sectionSubtitle}>{filteredHospitals.length} Noida centers available</Text>
+          </View>
 
           <View style={styles.searchBarWrapper}>
             <Search size={18} color={COLORS.textSecondary} />
@@ -120,32 +187,6 @@ export const HospitalSelectScreen: React.FC = () => {
               </TouchableOpacity>
             )}
           </View>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Mini-Map Preview with Route */}
-          {selectedHospital && (
-            <View style={styles.miniMapContainer}>
-              <LiveMapView
-                pickupLocation={pickupLocation}
-                destinationHospital={selectedHospital}
-                routeCoordinates={routeToHospital?.coordinates}
-                showPickupPuck={true}
-                showDestinationMarker={true}
-                style={styles.miniMap}
-              />
-              <View style={styles.miniMapBadge}>
-                <MapPin size={12} color="#FFFFFF" />
-                <Text style={styles.miniMapBadgeText}>Route Preview: {selectedHospital.distanceKm} km</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Hospital Selection Section */}
-          <Text style={styles.sectionTitle}>Select Destination Hospital</Text>
 
           {loading ? (
             <View style={styles.loaderBox}>
@@ -163,21 +204,7 @@ export const HospitalSelectScreen: React.FC = () => {
             ))
           )}
 
-          {/* Ambulance Type Selector */}
-          <AmbulanceTypeSelector
-            selectedType={selectedAmbulanceType}
-            distanceKm={selectedHospital?.distanceKm || 3.5}
-            onSelect={setSelectedAmbulanceType}
-          />
-
-          {/* Fare Summary & Urgent Booking CTA */}
-          {fareCalculation && (
-            <FareSummaryCard
-              fare={fareCalculation}
-              hospitalName={selectedHospital?.name}
-              onBook={handleBook}
-            />
-          )}
+          <View style={{ height: 40 }} />
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -210,49 +237,98 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  searchBarWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    height: 40,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: '#E2E8F0',
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '900',
     color: COLORS.textPrimary,
-    marginLeft: 8,
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    marginTop: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: 14,
+  },
+  destinationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  destinationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  destinationIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  destinationTag: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
+    letterSpacing: 0.5,
+  },
+  destinationName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  destinationAddress: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+  },
+  bedBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  bedBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#15803D',
   },
   miniMapContainer: {
     height: 150,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    width: '100%',
     position: 'relative',
   },
   miniMap: {
-    height: '100%',
     width: '100%',
+    height: '100%',
   },
   miniMapBadge: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    bottom: 8,
+    left: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -260,24 +336,58 @@ const styles = StyleSheet.create({
   },
   miniMapBadgeText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 12,
-  },
-  loaderBox: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+  },
+  sectionSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  searchBarWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    padding: 0,
+    fontWeight: '600',
+  },
+  loaderBox: {
     padding: 24,
+    alignItems: 'center',
+    gap: 8,
   },
   loaderText: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.textSecondary,
+    fontWeight: '600',
   },
 });

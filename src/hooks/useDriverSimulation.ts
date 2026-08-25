@@ -71,8 +71,8 @@ export function useDriverSimulation() {
       routePointsRef.current = points;
       setRouteCoordinates(points);
 
-      const totalDurationSeconds = tripPhase === 'driver_to_pickup' ? 16 : 24;
-      const tickMs = 500;
+      const totalDurationSeconds = tripPhase === 'driver_to_pickup' ? 55 : 75;
+      const tickMs = 400;
       const totalTicks = (totalDurationSeconds * 1000) / tickMs;
       let currentTick = 0;
 
