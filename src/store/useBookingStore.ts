@@ -2,10 +2,13 @@
 // Yeh store poori booking ki state handle karta hai - screen, hospital, ambulance, fare, OTP sab kuch
 
 import { create } from 'zustand';
-import { Hospital } from '../services/mockDataService';
+import { Hospital, getNearbyHospitalsMock } from '../services/mockDataService';
 import { FareCalculationResult, computeFare } from '../services/fareCalculator';
 import { RouteInfo, fetchDirectionsRoute } from '../services/googleMapsService';
 import { UserLocation, DEFAULT_LOCATION } from '../services/locationService';
+
+// Default hospital for immediate booking
+const defaultInitialHospital = getNearbyHospitalsMock(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude)[0];
 
 // 🏠 Screen Management - Konsa screen dikhana hai
 export type ScreenType =
@@ -38,8 +41,8 @@ export interface BookingRecord {
   ambulanceType: 'bls' | 'als'; // 🚑 Sirf BLS ya ALS - Bike hata diya
   fare: FareCalculationResult;
   status: BookingStatus;
-  driverName: string;
-  ambulanceNumber: string;
+  driverName?: string;
+  ambulanceNumber?: string;
 }
 
 interface BookingState {
@@ -75,8 +78,8 @@ interface BookingState {
 
   // 🎬 Actions - State change karne ke functions
   setCurrentScreen: (screen: ScreenType) => void;
-  setPickupLocation: (loc: UserLocation) => void;
-  setSelectedHospital: (hospital: Hospital | null) => void;
+  setPickupLocation: (location: UserLocation) => void;
+  setSelectedHospital: (hospital: Hospital) => void;
   setSelectedAmbulanceType: (type: 'bls' | 'als') => void;
   calculateAndSetFare: (distanceKm?: number) => void;
   startBookingFlow: (hospital?: Hospital, ambulanceType?: 'bls' | 'als') => void;
@@ -96,18 +99,18 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   // 📍 Default Location - Sector 128, Noida ki default location
   pickupLocation: DEFAULT_LOCATION,
 
-  // 🏥 Koi hospital select nahi hua abhi
-  selectedHospital: null,
+  // 🏥 Default Hospital - Jaypee Hospital (Sector 128)
+  selectedHospital: defaultInitialHospital,
 
-  // 🚑 Default ambulance type BLS hai
-  selectedAmbulanceType: 'bls',
+  // 🚑 Default ambulance type ALS ICU
+  selectedAmbulanceType: 'als',
 
   // 🗺️ Route abhi available nahi hai
   routeToPickup: null,
   routeToHospital: null,
 
-  // 💰 Fare abhi calculate nahi hua
-  fareCalculation: null,
+  // 💰 Pre-calculated fare for Jaypee Hospital
+  fareCalculation: computeFare(0.8, 'als'),
 
   // 📋 Booking idle hai - koi active booking nahi
   bookingStatus: 'idle',
@@ -204,14 +207,15 @@ export const useBookingStore = create<BookingState>((set, get) => ({
 
   // 🚀 Booking Flow Start - Hospital select karke booking shuru karo
   startBookingFlow: (hospital, ambulanceType) => {
-    if (hospital) {
-      set({ selectedHospital: hospital });
-    }
-    if (ambulanceType) {
-      set({ selectedAmbulanceType: ambulanceType });
-    }
-    get().calculateAndSetFare();
-    set({ currentScreen: 'hospital_select' });
+    const activeHosp = hospital || get().selectedHospital || defaultInitialHospital;
+    const activeType = ambulanceType || get().selectedAmbulanceType || 'als';
+    set({
+      selectedHospital: activeHosp,
+      selectedAmbulanceType: activeType,
+      currentScreen: 'hospital_select',
+    });
+    get().calculateAndSetFare(activeHosp.distanceKm);
+    get().loadHospitalRoute();
   },
 
   // ✅ Booking Confirm - Ambulance search shuru karo, OTP generate karo

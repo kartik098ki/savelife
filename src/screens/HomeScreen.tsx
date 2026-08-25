@@ -13,6 +13,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
 } from 'react-native';
 import {
   Truck,
@@ -114,57 +115,50 @@ export function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 🔝 Top Brand Bar: "SaveLife 🚨" Centered at the Top */}
-      <SafeAreaView style={styles.topBrandSafe}>
-        <View style={styles.topBrandBar}>
-          {/* Left Action: Siren Audio Toggle */}
-          <TouchableOpacity
-            style={[styles.sirenTopBtn, isSirenPlaying && styles.sirenTopBtnActive]}
-            activeOpacity={0.85}
-            onPress={toggleSirenSound}
-          >
-            {isSirenPlaying ? (
-              <Volume2 size={16} color="#FFFFFF" />
-            ) : (
-              <VolumeX size={16} color={COLORS.textPrimary} />
-            )}
-          </TouchableOpacity>
-
-          {/* Center Brand Title & Logo */}
-          <View style={styles.brandCenterRow}>
-            <View style={styles.brandIconBox}>
-              <HeartPulse size={18} color="#FFFFFF" />
-            </View>
-            <View style={{ alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <Text style={styles.brandMainTitle}>SaveLife</Text>
-                <View style={styles.brandLivePill}>
-                  <View style={styles.brandLiveDot} />
-                  <Text style={styles.brandLiveText}>24/7 DISPATCH</Text>
-                </View>
-              </View>
-              <Text style={styles.brandSubTitle}>Sector 128 • Noida Emergency Hub</Text>
-            </View>
-          </View>
-
-          {/* Right Action: 1-Tap SOS Emergency Dispatch */}
-          <TouchableOpacity
-            style={styles.sosTopBtn}
-            activeOpacity={0.88}
-            onPress={handleSosEmergency}
-          >
-            <Zap size={14} color="#FFFFFF" />
-            <Text style={styles.sosTopBtnText}>SOS 112</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-
       {/* 🗺️ Real-time Leaflet Map Section */}
       <View style={styles.mapContainer}>
         <LiveMapView 
           pickupLocation={pickupLocation} 
           showPickupPuck={true}
         />
+
+        {/* 🏥 Top Floating Header Bar over Map (Floating Brand Box & Actions) */}
+        <SafeAreaView style={styles.mapTopFloatingRow}>
+          {/* Brand Box (White rounded card with shadow & medical badge) */}
+          <View style={styles.brandFloatingBox}>
+            <View style={styles.brandIconBox}>
+              <HeartPulse size={16} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.brandTitleText}>SaveLife</Text>
+              <Text style={styles.brandCaptionText}>EMERGENCY CARE</Text>
+            </View>
+          </View>
+
+          {/* Right Floating Actions: Siren + SOS 112 */}
+          <View style={styles.mapTopActions}>
+            <TouchableOpacity
+              style={[styles.sirenFloatingBtn, isSirenPlaying && styles.sirenFloatingBtnActive]}
+              activeOpacity={0.85}
+              onPress={toggleSirenSound}
+            >
+              {isSirenPlaying ? (
+                <Volume2 size={16} color="#FFFFFF" />
+              ) : (
+                <VolumeX size={16} color={COLORS.textPrimary} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sosFloatingBtn}
+              activeOpacity={0.88}
+              onPress={handleSosEmergency}
+            >
+              <Zap size={14} color="#FFFFFF" />
+              <Text style={styles.sosFloatingBtnText}>SOS 112</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
 
         {/* 📡 Live Patrol Telemetry Badge */}
         <View style={styles.patrolBadge}>
@@ -572,114 +566,94 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  topBrandSafe: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    zIndex: 30,
-  },
-  topBrandBar: {
+  mapTopFloatingRow: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 12 : 10,
+    left: 12,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    zIndex: 25,
   },
-  brandCenterRow: {
+  brandFloatingBox: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     gap: 8,
-  },
-  brandTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   brandIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: COLORS.primary,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.alertRed,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  brandMainTitle: {
-    fontSize: 17,
+  brandTitleText: {
+    fontSize: 14,
     fontWeight: '900',
     color: COLORS.textPrimary,
-    letterSpacing: -0.4,
+    lineHeight: 16,
+    letterSpacing: -0.3,
   },
-  brandLivePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-  },
-  brandLiveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-  },
-  brandLiveText: {
+  brandCaptionText: {
     fontSize: 8,
     fontWeight: '900',
-    color: '#047857',
-    letterSpacing: 0.4,
+    color: COLORS.primaryDark,
+    letterSpacing: 0.6,
   },
-  brandSubTitle: {
-    fontSize: 10,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  topActionsRow: {
+  mapTopActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  sirenTopBtn: {
+  sirenFloatingBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  sirenTopBtnActive: {
+  sirenFloatingBtnActive: {
     backgroundColor: COLORS.alertRed,
     borderColor: COLORS.alertRed,
   },
-  sosTopBtn: {
+  sosFloatingBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: COLORS.alertRed,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 18,
     shadowColor: COLORS.alertRed,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  sosTopBtnText: {
+  sosFloatingBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.3,
   },
@@ -690,7 +664,7 @@ const styles = StyleSheet.create({
   },
   patrolBadge: {
     position: 'absolute',
-    top: 10,
+    top: 54,
     left: 12,
     flexDirection: 'row',
     alignItems: 'center',
