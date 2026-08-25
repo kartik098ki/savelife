@@ -251,6 +251,15 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
           [driverLocation.latitude, driverLocation.longitude],
           { icon: driverIcon, zIndexOffset: 2000 }
         ).addTo(map);
+
+        // Auto-fit map bounds on first load so user sees ambulance approaching down the street!
+        try {
+          const bounds = L.latLngBounds([
+            [driverLocation.latitude, driverLocation.longitude],
+            [pickupLocation.latitude, pickupLocation.longitude],
+          ]);
+          map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16.5 });
+        } catch (e) {}
       } else {
         driverMarkerRef.current.setLatLng([driverLocation.latitude, driverLocation.longitude]);
         driverMarkerRef.current.setIcon(driverIcon);
@@ -259,7 +268,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
       driverMarkerRef.current.remove();
       driverMarkerRef.current = null;
     }
-  }, [driverLocation, showDriverMarker]);
+  }, [driverLocation, showDriverMarker, pickupLocation]);
 
   // 🏥 Update Destination Hospital Marker
   useEffect(() => {

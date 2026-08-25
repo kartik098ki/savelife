@@ -1,5 +1,5 @@
-// 🚨 Emergency Dispatch Screen - 4-Second Sonar & Ethereal AI Orb Dispatch
-// Live GPS beacon broadcast + Ethereal glowing energy sphere matching user reference image
+// 🚨 Emergency Dispatch Screen - Realistic GPS Radar & Station Dispatch Connection
+// Live station connection telemetry, rotating emergency beacon & paramedic dispatch
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,14 +9,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Modal,
+  Platform,
 } from 'react-native';
-import { EtherealOrb } from '../components/common/EtherealOrb';
 import { COLORS } from '../constants/colors';
 import { useBookingStore } from '../store/useBookingStore';
 import { useDriverStore } from '../store/useDriverStore';
 import { soundService } from '../services/soundService';
-import { ShieldAlert, X, Radio, CheckCircle, Activity, Sparkles } from 'lucide-react-native';
+import { ShieldAlert, X, Radio, CheckCircle, Truck, MapPin, Navigation } from 'lucide-react-native';
 import { AMBULANCE_TYPES } from '../constants/ambulanceTypes';
+import { LiveMapView } from '../components/map/LiveMapView';
 
 export const DispatchSearchScreen: React.FC = () => {
   // 🚑 Booking Store - User selection aur cancel logic
@@ -27,7 +28,6 @@ export const DispatchSearchScreen: React.FC = () => {
     setCurrentScreen,
     cancelActiveBooking,
     setBookingStatus,
-    otpCode,
   } = useBookingStore();
 
   const { initializeDispatch } = useDriverStore();
@@ -48,7 +48,7 @@ export const DispatchSearchScreen: React.FC = () => {
     // 📡 Live Telemetry Progression Log
     const t1 = setTimeout(() => {
       setDispatchLogs((prev) => [
-        'Alerting nearest 3 active ambulance stations near Noida Expressway...',
+        'Alerting 3 active ALS stations near Noida Expressway...',
         ...prev,
       ]);
     }, 1200);
@@ -73,7 +73,7 @@ export const DispatchSearchScreen: React.FC = () => {
         pickupLocation.longitude,
         selectedAmbulanceType,
         [],
-        5
+        4
       );
       setBookingStatus('driver_assigned');
       setCurrentScreen('live_tracking');
@@ -92,93 +92,114 @@ export const DispatchSearchScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* 🌌 Deep Dark Sci-Fi Background */}
-      <View style={styles.darkBackdrop}>
+      {/* 🗺️ Live Map Radar Background */}
+      <View style={styles.mapBackground}>
+        <LiveMapView 
+          pickupLocation={pickupLocation} 
+          showPickupPuck={true}
+        />
+        <View style={styles.mapDimOverlay} />
+      </View>
+
+      <SafeAreaView style={styles.safeContainer}>
         {/* Floating Protocol Header */}
-        <SafeAreaView style={styles.safeHeader}>
-          <View style={styles.headerBar}>
-            <View style={styles.liveDispatchPill}>
-              <Radio size={14} color="#FFFFFF" />
-              <Text style={styles.liveDispatchText}>EMERGENCY DISPATCH PROTOCOL</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.cancelIconBtn}
-              activeOpacity={0.8}
-              onPress={() => setShowCancelModal(true)}
-            >
-              <X size={18} color="#FFFFFF" />
-            </TouchableOpacity>
+        <View style={styles.headerBar}>
+          <View style={styles.liveDispatchPill}>
+            <Radio size={14} color="#FFFFFF" />
+            <Text style={styles.liveDispatchText}>EMERGENCY DISPATCH PROTOCOL</Text>
           </View>
-        </SafeAreaView>
 
-        {/* 🔮 Center Ethereal AI Glowing Orb Sphere (Matching Reference Image) */}
-        <View style={styles.centerOrbContainer}>
-          <EtherealOrb size={190}>
-            <View style={styles.innerOrbPulse}>
-              <Sparkles size={36} color="#FFFFFF" />
-              <Text style={styles.orbCountdownText}>{secondsRemaining}s</Text>
+          <TouchableOpacity
+            style={styles.cancelIconBtn}
+            activeOpacity={0.8}
+            onPress={() => setShowCancelModal(true)}
+          >
+            <X size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* 🚨 Center Dispatch Connecting Card (Realistic Ambulance Strobe Radar) */}
+        <View style={styles.centerCardContainer}>
+          <View style={styles.radarCard}>
+            {/* Animated Radar Pulse Container */}
+            <View style={styles.beaconOuterCircle}>
+              <View style={styles.beaconInnerCircle}>
+                <Truck size={42} color={COLORS.alertRed} />
+              </View>
+              <View style={styles.strobeLightLeft} />
+              <View style={styles.strobeLightRight} />
             </View>
-          </EtherealOrb>
 
-          <Text style={styles.searchingTitle}>Locating Nearest Paramedic</Text>
-          <Text style={styles.searchingSubtitle}>AI High-Priority Beacon Active • Sector 128 Hub</Text>
-        </View>
-      </View>
-
-      {/* 📋 Bottom Dispatch Telemetry Card */}
-      <View style={styles.bottomCard}>
-        <View style={styles.signalRow}>
-          <View style={styles.pulseDot} />
-          <Text style={styles.findingText}>
-            Dispatching {ambulanceConfig.name}...
-          </Text>
-        </View>
-
-        <Text style={styles.subtext}>
-          Destination: {selectedHospital?.name || 'Jaypee Hospital (Sector 128)'}
-        </Text>
-
-        {/* 📡 Live Dispatch Steps Log */}
-        <View style={styles.logContainer}>
-          {dispatchLogs.map((log, idx) => (
-            <View key={idx} style={styles.logItem}>
-              <CheckCircle size={13} color={COLORS.primary} />
-              <Text style={styles.logText}>{log}</Text>
+            <View style={styles.connectingBadge}>
+              <View style={styles.liveBlinkingDot} />
+              <Text style={styles.connectingBadgeText}>DISPATCHING NEAREST UNIT</Text>
             </View>
-          ))}
+
+            <Text style={styles.dispatchMainTitle}>
+              Locating {selectedAmbulanceType === 'als' ? 'ALS ICU Ambulance' : 'BLS Ambulance'}
+            </Text>
+            
+            <Text style={styles.dispatchSubtitle}>
+              Broadcasting to Sector 128 stations • ETA ~4 mins
+            </Text>
+
+            <View style={styles.destinationPill}>
+              <MapPin size={12} color={COLORS.primaryDark} />
+              <Text style={styles.destinationPillText} numberOfLines={1}>
+                {selectedHospital?.name || 'Jaypee Hospital (Sector 128)'}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* ⏳ Progress Bar */}
-        <View style={styles.progressBarBg}>
-          <View
-            style={[
-              styles.progressBarFill,
-              { width: `${((4 - secondsRemaining) / 4) * 100}%` },
-            ]}
-          />
+        {/* 📋 Bottom Telemetry & Progress Card */}
+        <View style={styles.bottomCard}>
+          <View style={styles.progressHeaderRow}>
+            <Text style={styles.progressStatusText}>Connecting in {secondsRemaining}s...</Text>
+            <Text style={styles.progressPercentText}>{Math.round(((4 - secondsRemaining) / 4) * 100)}%</Text>
+          </View>
+
+          {/* ⏳ Progress Bar */}
+          <View style={styles.progressBarBg}>
+            <View
+              style={[
+                styles.progressBarFill,
+                { width: `${((4 - secondsRemaining) / 4) * 100}%` },
+              ]}
+            />
+          </View>
+
+          {/* 📡 Live Dispatch Steps Log */}
+          <View style={styles.logContainer}>
+            {dispatchLogs.map((log, idx) => (
+              <View key={idx} style={styles.logItem}>
+                <CheckCircle size={14} color={COLORS.primary} />
+                <Text style={styles.logText}>{log}</Text>
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={styles.cancelLink}
+            activeOpacity={0.7}
+            onPress={() => setShowCancelModal(true)}
+          >
+            <Text style={styles.cancelLinkText}>Cancel Emergency Request</Text>
+          </TouchableOpacity>
         </View>
+      </SafeAreaView>
 
-        <TouchableOpacity
-          style={styles.cancelLink}
-          activeOpacity={0.7}
-          onPress={() => setShowCancelModal(true)}
-        >
-          <Text style={styles.cancelLinkText}>Cancel Emergency Request</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ❌ Cancel Confirmation Modal */}
+      {/* ❌ 5-Minute Arrival Cancellation Protection Modal */}
       <Modal visible={showCancelModal} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalIconBox}>
-              <ShieldAlert size={34} color={COLORS.alertRed} />
+            <View style={styles.cancelAlertIconBox}>
+              <ShieldAlert size={38} color={COLORS.alertRed} />
             </View>
 
-            <Text style={styles.modalTitle}>Ambulance is 5 Mins Away</Text>
-            <Text style={styles.modalSubtitle}>
-              🚑 Paramedic unit UP 16 EM 4092 is responding immediately. Are you sure you want to cancel?
+            <Text style={styles.cancelAlertTitle}>Ambulance is Already Dispatched</Text>
+            <Text style={styles.cancelAlertSub}>
+              🚑 Paramedic unit is speeding towards your pickup point in Sector 128. It will arrive in ~4 minutes.
             </Text>
 
             <TouchableOpacity
@@ -212,235 +233,271 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
     position: 'relative',
   },
-  darkBackdrop: {
-    flex: 1,
-    backgroundColor: '#0A0F1D',
-    paddingTop: 10,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 280,
+  mapBackground: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
-  safeHeader: {
-    width: '100%',
-    paddingHorizontal: 16,
-    zIndex: 20,
+  mapDimOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+  },
+  safeContainer: {
+    flex: 1,
+    zIndex: 10,
+    justifyContent: 'space-between',
   },
   headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   liveDispatchPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.alertRed,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
-    shadowColor: COLORS.alertRed,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   liveDispatchText: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '900',
     letterSpacing: 0.5,
   },
   cancelIconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  centerOrbContainer: {
+  centerCardContainer: {
+    paddingHorizontal: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
   },
-  innerOrbPulse: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  orbCountdownText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  searchingTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginTop: 18,
-    letterSpacing: -0.2,
-  },
-  searchingSubtitle: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  bottomCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  radarCard: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderRadius: 24,
     padding: 20,
-    paddingBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  signalRow: {
-    flexDirection: 'row',
+    width: '100%',
+    maxWidth: 380,
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  pulseDot: {
+  beaconOuterCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 2,
+    borderColor: '#FECACA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 16,
+  },
+  beaconInnerCircle: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  strobeLightLeft: {
+    position: 'absolute',
+    top: 4,
+    left: 20,
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: COLORS.alertRed,
   },
-  findingText: {
-    fontSize: 16,
+  strobeLightRight: {
+    position: 'absolute',
+    top: 4,
+    right: 20,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563EB',
+  },
+  connectingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    marginBottom: 8,
+  },
+  liveBlinkingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: COLORS.alertRed,
+  },
+  connectingBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.alertRed,
+    letterSpacing: 0.5,
+  },
+  dispatchMainTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  dispatchSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  destinationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    maxWidth: '95%',
+  },
+  destinationPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+  bottomCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 18,
+    paddingBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressStatusText: {
+    fontSize: 13,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
-  subtext: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 8,
-  },
-  otpBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    gap: 6,
-  },
-  otpLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  otpValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#92400E',
-    letterSpacing: 2,
-  },
-  otpHint: {
-    fontSize: 10,
-    color: '#B45309',
-    marginLeft: 'auto',
-  },
-  logContainer: {
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 12,
-    gap: 6,
-  },
-  logItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  logText: {
-    fontSize: 11,
-    color: COLORS.textPrimary,
-    fontWeight: '600',
+  progressPercentText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
   },
   progressBarBg: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.cardBorder,
+    backgroundColor: '#E2E8F0',
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 14,
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.alertRed,
     borderRadius: 3,
+  },
+  logContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  logItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logText: {
+    fontSize: 12,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+    flex: 1,
   },
   cancelLink: {
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   cancelLinkText: {
-    color: COLORS.alertRed,
-    fontSize: 13,
+    color: '#94A3B8',
+    fontSize: 12,
     fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    width: '100%',
-    maxWidth: 380,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 28,
   },
-  modalIconBox: {
+  cancelAlertIconBox: {
     width: 60,
     height: 60,
     borderRadius: 30,
     backgroundColor: '#FEF2F2',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 12,
   },
-  modalTitle: {
+  cancelAlertTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
     color: COLORS.textPrimary,
     textAlign: 'center',
+    marginBottom: 6,
   },
-  modalSubtitle: {
+  cancelAlertSub: {
     fontSize: 13,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
+    marginBottom: 16,
   },
   keepBookingBtn: {
     backgroundColor: COLORS.primary,
     paddingVertical: 13,
     borderRadius: 14,
-    width: '100%',
     alignItems: 'center',
-    marginTop: 6,
+    marginBottom: 8,
   },
   keepBookingBtnText: {
     color: '#FFFFFF',
@@ -449,12 +506,11 @@ const styles = StyleSheet.create({
   },
   confirmCancelBtn: {
     backgroundColor: '#FEF2F2',
-    paddingVertical: 12,
-    borderRadius: 14,
-    width: '100%',
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#FECACA',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
   },
   confirmCancelBtnText: {
     color: COLORS.alertRed,

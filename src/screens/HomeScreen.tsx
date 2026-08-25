@@ -114,49 +114,48 @@ export function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 🔝 Top Brand Bar: "SaveLife 🚨" Prominently Placed at the Top */}
+      {/* 🔝 Top Brand Bar: "SaveLife 🚨" Centered at the Top */}
       <SafeAreaView style={styles.topBrandSafe}>
         <View style={styles.topBrandBar}>
-          <View style={styles.brandTitleRow}>
+          {/* Left Action: Siren Audio Toggle */}
+          <TouchableOpacity
+            style={[styles.sirenTopBtn, isSirenPlaying && styles.sirenTopBtnActive]}
+            activeOpacity={0.85}
+            onPress={toggleSirenSound}
+          >
+            {isSirenPlaying ? (
+              <Volume2 size={16} color="#FFFFFF" />
+            ) : (
+              <VolumeX size={16} color={COLORS.textPrimary} />
+            )}
+          </TouchableOpacity>
+
+          {/* Center Brand Title & Logo */}
+          <View style={styles.brandCenterRow}>
             <View style={styles.brandIconBox}>
-              <HeartPulse size={20} color="#FFFFFF" />
+              <HeartPulse size={18} color="#FFFFFF" />
             </View>
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Text style={styles.brandMainTitle}>SaveLife</Text>
                 <View style={styles.brandLivePill}>
                   <View style={styles.brandLiveDot} />
                   <Text style={styles.brandLiveText}>24/7 DISPATCH</Text>
                 </View>
               </View>
-              <Text style={styles.brandSubTitle}>Sector 128, Noida Emergency Hub</Text>
+              <Text style={styles.brandSubTitle}>Sector 128 • Noida Emergency Hub</Text>
             </View>
           </View>
 
-          <View style={styles.topActionsRow}>
-            {/* 🚨 Quick Emergency Siren Audio Toggle */}
-            <TouchableOpacity
-              style={[styles.sirenTopBtn, isSirenPlaying && styles.sirenTopBtnActive]}
-              activeOpacity={0.85}
-              onPress={toggleSirenSound}
-            >
-              {isSirenPlaying ? (
-                <Volume2 size={16} color="#FFFFFF" />
-              ) : (
-                <VolumeX size={16} color={COLORS.textPrimary} />
-              )}
-            </TouchableOpacity>
-
-            {/* 🆘 1-Tap SOS Emergency Dispatch Float */}
-            <TouchableOpacity
-              style={styles.sosTopBtn}
-              activeOpacity={0.88}
-              onPress={handleSosEmergency}
-            >
-              <Zap size={14} color="#FFFFFF" />
-              <Text style={styles.sosTopBtnText}>SOS 112</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Right Action: 1-Tap SOS Emergency Dispatch */}
+          <TouchableOpacity
+            style={styles.sosTopBtn}
+            activeOpacity={0.88}
+            onPress={handleSosEmergency}
+          >
+            <Zap size={14} color="#FFFFFF" />
+            <Text style={styles.sosTopBtnText}>SOS 112</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
@@ -587,15 +586,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#FFFFFF',
   },
+  brandCenterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   brandTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   brandIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
