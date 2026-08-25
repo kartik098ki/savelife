@@ -77,15 +77,20 @@ export function HomeScreen() {
     load();
   }, [pickupLocation]);
 
-  const toggleSirenSound = () => {
-    if (isSirenPlaying) {
-      soundService.stopSiren();
-      setIsSirenPlaying(false);
-    } else {
-      soundService.playEmergencySiren();
-      setIsSirenPlaying(true);
+  // 🛰️ Automatically detect real user GPS on app start
+  useEffect(() => {
+    async function autoDetectLocation() {
+      try {
+        const live = await getCurrentUserLocation();
+        if (live && live.latitude && live.longitude) {
+          setPickupLocation(live);
+        }
+      } catch (err) {
+        console.log('Using default Sector 128 Wish Town location');
+      }
     }
-  };
+    autoDetectLocation();
+  }, []);
 
   const handleSosEmergency = () => {
     soundService.playSonarPing();
@@ -122,9 +127,12 @@ export function HomeScreen() {
           showPickupPuck={true}
         />
 
-        {/* 🏥 Top Floating Header Bar over Map (Floating Brand Box & Actions) */}
+        {/* 🏥 Top Floating Header Bar over Map (Centered Brand Box & Floating SOS Button) */}
         <SafeAreaView style={styles.mapTopFloatingRow}>
-          {/* Brand Box (White rounded card with shadow & medical badge) */}
+          {/* Left spacer for visual center balance */}
+          <View style={styles.headerBalanceSpacer} />
+
+          {/* Centered SaveLife Brand Box */}
           <View style={styles.brandFloatingBox}>
             <View style={styles.brandIconBox}>
               <HeartPulse size={16} color="#FFFFFF" />
@@ -135,29 +143,15 @@ export function HomeScreen() {
             </View>
           </View>
 
-          {/* Right Floating Actions: Siren + SOS 112 */}
-          <View style={styles.mapTopActions}>
-            <TouchableOpacity
-              style={[styles.sirenFloatingBtn, isSirenPlaying && styles.sirenFloatingBtnActive]}
-              activeOpacity={0.85}
-              onPress={toggleSirenSound}
-            >
-              {isSirenPlaying ? (
-                <Volume2 size={16} color="#FFFFFF" />
-              ) : (
-                <VolumeX size={16} color={COLORS.textPrimary} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sosFloatingBtn}
-              activeOpacity={0.88}
-              onPress={handleSosEmergency}
-            >
-              <Zap size={14} color="#FFFFFF" />
-              <Text style={styles.sosFloatingBtnText}>SOS 112</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Right Floating SOS 112 Action */}
+          <TouchableOpacity
+            style={styles.sosFloatingBtn}
+            activeOpacity={0.88}
+            onPress={handleSosEmergency}
+          >
+            <Zap size={14} color="#FFFFFF" />
+            <Text style={styles.sosFloatingBtnText}>SOS 112</Text>
+          </TouchableOpacity>
         </SafeAreaView>
 
         {/* 📡 Live Patrol Telemetry Badge */}
@@ -576,6 +570,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 25,
   },
+  headerBalanceSpacer: {
+    width: 60,
+  },
   brandFloatingBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -612,30 +609,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: COLORS.primaryDark,
     letterSpacing: 0.6,
-  },
-  mapTopActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sirenFloatingBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  sirenFloatingBtnActive: {
-    backgroundColor: COLORS.alertRed,
-    borderColor: COLORS.alertRed,
   },
   sosFloatingBtn: {
     flexDirection: 'row',
