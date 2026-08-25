@@ -1,6 +1,9 @@
+// 🗺️ Real-time Interactive Leaflet Map for SaveLife (Web & Mobile Web)
+// Ultra-realistic OpenStreetMap/Carto Voyager tiles, 3D Ambulance Marker with Strobe Siren, Double-Cased Route Polyline, and Live Sector 128 Patrol Units
+
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { Crosshair, Layers, Navigation, ZoomIn, ZoomOut } from 'lucide-react-native';
+import { Crosshair, Navigation, ZoomIn, ZoomOut, Compass } from 'lucide-react-native';
 import { COLORS } from '../../constants/colors';
 import { Hospital } from '../../services/mockDataService';
 import L from 'leaflet';
@@ -13,6 +16,7 @@ interface LiveMapViewProps {
   showPickupPuck?: boolean;
   showDriverMarker?: boolean;
   showDestinationMarker?: boolean;
+  showPatrolUnits?: boolean;
   style?: any;
   onCenterMap?: () => void;
 }
@@ -25,6 +29,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
   showPickupPuck = true,
   showDriverMarker = false,
   showDestinationMarker = false,
+  showPatrolUnits = true,
   style,
   onCenterMap,
 }) => {
@@ -33,47 +38,57 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
   const pickupMarkerRef = useRef<L.Marker | null>(null);
   const driverMarkerRef = useRef<L.Marker | null>(null);
   const hospitalMarkerRef = useRef<L.Marker | null>(null);
-  const polylineRef = useRef<L.Polyline | null>(null);
+  const polylineCasingRef = useRef<L.Polyline | null>(null);
+  const polylineInnerRef = useRef<L.Polyline | null>(null);
+  const patrolMarkersRef = useRef<L.Marker[]>([]);
 
-  // Ensure Leaflet CSS is loaded in DOM head
+  // 🎨 Inject custom CSS styles & animations into DOM
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      const cssId = 'leaflet-css-bundle';
+      const cssId = 'savelife-map-styles';
       if (!document.getElementById(cssId)) {
         const link = document.createElement('link');
-        link.id = cssId;
+        link.id = 'leaflet-css-bundle';
         link.rel = 'stylesheet';
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         document.head.appendChild(link);
 
-        // Inject custom pulse ring animations for Leaflet markers
         const styleTag = document.createElement('style');
+        styleTag.id = cssId;
         styleTag.innerHTML = `
-          @keyframes savelife-pulse {
+          @keyframes savelife-gps-pulse {
             0% { transform: scale(0.9); opacity: 0.8; }
-            50% { transform: scale(2.0); opacity: 0.2; }
-            100% { transform: scale(2.4); opacity: 0; }
+            50% { transform: scale(2.2); opacity: 0.2; }
+            100% { transform: scale(2.6); opacity: 0; }
           }
-          .savelife-pulse-ring {
+          @keyframes siren-strobe-red {
+            0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px #EF4444); }
+            50% { opacity: 0.3; filter: none; }
+          }
+          @keyframes siren-strobe-blue {
+            0%, 100% { opacity: 0.3; filter: none; }
+            50% { opacity: 1; filter: drop-shadow(0 0 8px #3B82F6); }
+          }
+          .savelife-gps-aura {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            top: -10px;
+            left: -10px;
+            border-radius: 50%;
+            background-color: rgba(37, 99, 235, 0.35);
+            animation: savelife-gps-pulse 2s infinite ease-out;
+            pointer-events: none;
+          }
+          .savelife-patrol-aura {
             position: absolute;
             width: 36px;
             height: 36px;
             top: -6px;
             left: -6px;
             border-radius: 50%;
-            background-color: #1A73E8;
-            animation: savelife-pulse 1.8s infinite ease-out;
-            pointer-events: none;
-          }
-          .savelife-driver-pulse {
-            position: absolute;
-            width: 44px;
-            height: 44px;
-            top: -6px;
-            left: -6px;
-            border-radius: 50%;
-            background-color: #E53935;
-            animation: savelife-pulse 1.4s infinite ease-out;
+            background-color: rgba(16, 185, 129, 0.3);
+            animation: savelife-gps-pulse 2.4s infinite ease-out;
             pointer-events: none;
           }
           .leaflet-control-attribution {
@@ -85,7 +100,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     }
   }, []);
 
-  // Initialize map
+  // 🗺️ Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
@@ -93,15 +108,17 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     try {
       const map = L.map(mapContainerRef.current, {
         center: [pickupLocation.latitude, pickupLocation.longitude],
-        zoom: 15,
+        zoom: 15.5,
         zoomControl: false,
         attributionControl: false,
+        preferCanvas: true,
       });
 
-      // CartoDB Voyager clean medical tile basemap
+      // CartoDB Voyager Clean High-Resolution Basemap
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
+        detectRetina: true,
       }).addTo(map);
 
       mapInstanceRef.current = map;
@@ -117,7 +134,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     };
   }, []);
 
-  // Update Pickup Marker
+  // 📍 Update Pickup Marker with Real GPS Aura & Callout
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -126,31 +143,31 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
       const pickupHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
           <div style="
-            background: #0E9F6E;
+            background: #047857;
             color: #FFFFFF;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
-            padding: 4px 10px;
-            border-radius: 14px;
+            padding: 4px 8px;
+            border-radius: 12px;
             white-space: nowrap;
             box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-            margin-bottom: 4px;
-            letter-spacing: 0.3px;
+            margin-bottom: 3px;
+            border: 1.5px solid #FFFFFF;
           ">
-            Pickup Point
+            📍 Pickup Point
           </div>
           <div style="position: relative; width: 24px; height: 24px;">
-            <div class="savelife-pulse-ring"></div>
+            <div class="savelife-gps-aura"></div>
             <div style="
               width: 24px;
               height: 24px;
               border-radius: 12px;
-              background: #1A73E8;
+              background: #2563EB;
               border: 3px solid #FFFFFF;
               display: flex;
               align-items: center;
               justify-content: center;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              box-shadow: 0 3px 8px rgba(0,0,0,0.35);
             ">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#FFFFFF" style="transform: rotate(45deg);">
                 <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
@@ -163,8 +180,8 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
       const pickupIcon = L.divIcon({
         className: 'savelife-custom-pickup',
         html: pickupHtml,
-        iconSize: [100, 50],
-        iconAnchor: [50, 48],
+        iconSize: [110, 52],
+        iconAnchor: [55, 50],
       });
 
       if (!pickupMarkerRef.current) {
@@ -181,7 +198,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     }
   }, [pickupLocation, showPickupPuck]);
 
-  // Update Driver Ambulance Marker
+  // 🚑 Update Live Emergency Ambulance Marker (3D Styled Top-Down Ambulance with Strobe Sirens)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -189,26 +206,34 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     if (showDriverMarker && driverLocation) {
       const heading = driverLocation.heading || 0;
       const driverHtml = `
-        <div style="position: relative; width: 36px; height: 36px;">
-          <div class="savelife-driver-pulse"></div>
+        <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+          <!-- 3D Ambulance Body -->
           <div style="
-            width: 34px;
-            height: 34px;
-            border-radius: 17px;
-            background: #E53935;
-            border: 2.5px solid #FFFFFF;
+            width: 38px;
+            height: 38px;
+            border-radius: 19px;
+            background: #FFFFFF;
+            border: 2px solid #EF4444;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 3px 8px rgba(229, 57, 53, 0.45);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.45);
             transform: rotate(${heading}deg);
             transition: transform 0.2s linear;
+            position: relative;
           ">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Strobe Lights -->
+            <div style="position: absolute; top: 3px; left: 8px; width: 6px; height: 6px; border-radius: 3px; background: #EF4444; animation: siren-strobe-red 0.4s infinite;"></div>
+            <div style="position: absolute; top: 3px; right: 8px; width: 6px; height: 6px; border-radius: 3px; background: #3B82F6; animation: siren-strobe-blue 0.4s infinite;"></div>
+
+            <!-- Ambulance SVG Icon -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="1" y="3" width="15" height="13"></rect>
               <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-              <circle cx="5.5" cy="18.5" r="2.5"></circle>
-              <circle cx="18.5" cy="18.5" r="2.5"></circle>
+              <circle cx="5.5" cy="18.5" r="2.5" fill="#1E293B"></circle>
+              <circle cx="18.5" cy="18.5" r="2.5" fill="#1E293B"></circle>
+              <line x1="8.5" y1="7" x2="8.5" y2="12" stroke="#DC2626" stroke-width="2.5"></line>
+              <line x1="6" y1="9.5" x2="11" y2="9.5" stroke="#DC2626" stroke-width="2.5"></line>
             </svg>
           </div>
         </div>
@@ -217,8 +242,8 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
       const driverIcon = L.divIcon({
         className: 'savelife-custom-driver',
         html: driverHtml,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
       });
 
       if (!driverMarkerRef.current) {
@@ -236,7 +261,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     }
   }, [driverLocation, showDriverMarker]);
 
-  // Update Hospital Marker
+  // 🏥 Update Destination Hospital Marker
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -246,12 +271,12 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
         <div style="
           display: flex;
           align-items: center;
-          background: #047447;
+          background: #047857;
           border: 2px solid #FFFFFF;
-          padding: 5px 9px;
+          padding: 5px 10px;
           border-radius: 16px;
-          box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-          gap: 5px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+          gap: 6px;
           white-space: nowrap;
         ">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5">
@@ -261,7 +286,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
           <span style="color: #FFFFFF; font-size: 11px; font-weight: 800;">
             ${destinationHospital.name.slice(0, 18)}
           </span>
-          <span style="background: rgba(255,255,255,0.25); color: #FFFFFF; font-size: 9px; font-weight: 800; padding: 2px 4px; border-radius: 4px;">
+          <span style="background: rgba(255,255,255,0.25); color: #FFFFFF; font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 6px;">
             ${destinationHospital.icuBedsAvailable} ICU
           </span>
         </div>
@@ -270,8 +295,8 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
       const hospitalIcon = L.divIcon({
         className: 'savelife-custom-hospital',
         html: hospitalHtml,
-        iconSize: [160, 32],
-        iconAnchor: [80, 16],
+        iconSize: [170, 34],
+        iconAnchor: [85, 17],
       });
 
       if (!hospitalMarkerRef.current) {
@@ -288,7 +313,7 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     }
   }, [destinationHospital, showDestinationMarker]);
 
-  // Update Route Polyline
+  // 🛣️ Update Double-Cased Route Polyline (Shrinks Dynamically in Real Time)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -296,34 +321,116 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
     if (routeCoordinates && routeCoordinates.length > 1) {
       const latLngs: [number, number][] = routeCoordinates.map((c) => [c.latitude, c.longitude]);
 
-      if (!polylineRef.current) {
-        polylineRef.current = L.polyline(latLngs, {
-          color: '#2563EB',
-          weight: 6,
-          opacity: 0.9,
+      // Outer dark casing border
+      if (!polylineCasingRef.current) {
+        polylineCasingRef.current = L.polyline(latLngs, {
+          color: '#1E3A8A',
+          weight: 8,
+          opacity: 0.95,
           lineJoin: 'round',
           lineCap: 'round',
         }).addTo(map);
       } else {
-        polylineRef.current.setLatLngs(latLngs);
+        polylineCasingRef.current.setLatLngs(latLngs);
       }
 
-      // Auto-fit bounds
-      try {
-        const bounds = L.latLngBounds(latLngs);
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
-      } catch (e) {}
-    } else if (polylineRef.current) {
-      polylineRef.current.remove();
-      polylineRef.current = null;
+      // Inner bright electric blue line
+      if (!polylineInnerRef.current) {
+        polylineInnerRef.current = L.polyline(latLngs, {
+          color: '#2563EB',
+          weight: 5,
+          opacity: 1.0,
+          lineJoin: 'round',
+          lineCap: 'round',
+        }).addTo(map);
+      } else {
+        polylineInnerRef.current.setLatLngs(latLngs);
+      }
+    } else {
+      if (polylineCasingRef.current) {
+        polylineCasingRef.current.remove();
+        polylineCasingRef.current = null;
+      }
+      if (polylineInnerRef.current) {
+        polylineInnerRef.current.remove();
+        polylineInnerRef.current = null;
+      }
     }
   }, [routeCoordinates]);
+
+  // 🚨 Patrol Units around Sector 128 (When in idle map view)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Clear previous patrol markers
+    patrolMarkersRef.current.forEach((m) => m.remove());
+    patrolMarkersRef.current = [];
+
+    if (showPatrolUnits && !showDriverMarker) {
+      const patrolPositions = [
+        { lat: pickupLocation.latitude + 0.007, lng: pickupLocation.longitude + 0.008, name: 'ALS Unit 1 (3m)' },
+        { lat: pickupLocation.latitude - 0.006, lng: pickupLocation.longitude - 0.007, name: 'ALS Unit 2 (4m)' },
+        { lat: pickupLocation.latitude + 0.004, lng: pickupLocation.longitude - 0.009, name: 'BLS Unit 3 (2m)' },
+      ];
+
+      patrolPositions.forEach((pos) => {
+        const patrolHtml = `
+          <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+            <div style="
+              background: rgba(15, 23, 42, 0.85);
+              color: #10B981;
+              font-size: 9px;
+              font-weight: 800;
+              padding: 2px 6px;
+              border-radius: 8px;
+              white-space: nowrap;
+              margin-bottom: 2px;
+            ">
+              ${pos.name}
+            </div>
+            <div style="position: relative; width: 28px; height: 28px;">
+              <div class="savelife-patrol-aura"></div>
+              <div style="
+                width: 28px;
+                height: 28px;
+                border-radius: 14px;
+                background: #FFFFFF;
+                border: 2px solid #10B981;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+              ">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const pIcon = L.divIcon({
+          className: 'savelife-patrol-marker',
+          html: patrolHtml,
+          iconSize: [80, 44],
+          iconAnchor: [40, 42],
+        });
+
+        const marker = L.marker([pos.lat, pos.lng], { icon: pIcon, zIndexOffset: 500 }).addTo(map);
+        patrolMarkersRef.current.push(marker);
+      });
+    }
+  }, [pickupLocation, showPatrolUnits, showDriverMarker]);
 
   const handleRecenter = () => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setView(
         [pickupLocation.latitude, pickupLocation.longitude],
-        15,
+        16,
         { animate: true }
       );
     }
@@ -353,36 +460,39 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
           position: 'absolute',
           top: 0,
           left: 0,
-          right: 0,
-          bottom: 0,
+          zIndex: 1,
         }}
       />
 
-      {/* Floating Map Controls */}
-      <View style={styles.controlsCol}>
+      {/* Floating Map Navigation Controls */}
+      <View style={styles.floatingControls}>
         <TouchableOpacity
           style={styles.controlBtn}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
           onPress={handleRecenter}
         >
-          <Crosshair size={18} color={COLORS.textPrimary} />
+          <Crosshair size={18} color={COLORS.primaryDark} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.controlBtn}
-          activeOpacity={0.85}
-          onPress={handleZoomIn}
-        >
-          <ZoomIn size={18} color={COLORS.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.zoomPill}>
+          <TouchableOpacity
+            style={styles.zoomBtn}
+            activeOpacity={0.8}
+            onPress={handleZoomIn}
+          >
+            <ZoomIn size={16} color={COLORS.textPrimary} />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.controlBtn}
-          activeOpacity={0.85}
-          onPress={handleZoomOut}
-        >
-          <ZoomOut size={18} color={COLORS.textPrimary} />
-        </TouchableOpacity>
+          <View style={styles.zoomDivider} />
+
+          <TouchableOpacity
+            style={styles.zoomBtn}
+            activeOpacity={0.8}
+            onPress={handleZoomOut}
+          >
+            <ZoomOut size={16} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -391,16 +501,16 @@ export const LiveMapView: React.FC<LiveMapViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#E2E8F0',
     position: 'relative',
-    overflow: 'hidden',
-    backgroundColor: '#E8ECEF',
   },
-  controlsCol: {
+  floatingControls: {
     position: 'absolute',
     right: 14,
-    bottom: 20,
+    bottom: 24,
     gap: 8,
-    zIndex: 400,
+    alignItems: 'center',
+    zIndex: 20,
   },
   controlBtn: {
     width: 38,
@@ -415,6 +525,29 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: '#E2E8F0',
+  },
+  zoomPill: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  zoomBtn: {
+    width: 38,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    width: '100%',
   },
 });

@@ -76,14 +76,13 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     <View style={[styles.container, { paddingBottom: bottomPadding }]}>
       {/* 🧭 Tab 1: Ride / Home Map */}
       <TouchableOpacity
-        style={styles.tabItem}
+        style={[styles.tabItem, isTabActive('home') && styles.tabItemActive]}
         onPress={() => onNavigate('home')}
         activeOpacity={0.7}
       >
         <Navigation
           size={22}
           color={isTabActive('home') ? COLORS.primary : COLORS.textMuted}
-          style={{ transform: [{ rotate: '45deg' }] }}
         />
         <Text
           style={[
@@ -97,7 +96,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
       {/* 🚑 Tab 2: Book / Track Ambulance */}
       <TouchableOpacity
-        style={styles.tabItem}
+        style={[styles.tabItem, isTabActive('hospital_select') && styles.tabItemActive]}
         onPress={handleAmbulanceTabPress}
         activeOpacity={0.7}
       >
@@ -132,7 +131,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
       {/* 🏥 Tab 4: Hospital Directory & ICU beds */}
       <TouchableOpacity
-        style={styles.tabItem}
+        style={[styles.tabItem, isTabActive('hospital_list') && styles.tabItemActive]}
         onPress={() => onNavigate('hospital_list')}
         activeOpacity={0.7}
       >
@@ -152,7 +151,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
       {/* 👤 Tab 5: User Profile & Emergency Medical ID */}
       <TouchableOpacity
-        style={styles.tabItem}
+        style={[styles.tabItem, isTabActive('profile') && styles.tabItemActive]}
         onPress={() => onNavigate('profile')}
         activeOpacity={0.7}
       >
@@ -178,15 +177,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#FFFFFF',
-    height: 68,
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    height: 74,
     borderTopWidth: 1,
     borderTopColor: COLORS.cardBorder,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 16,
     position: 'relative',
     zIndex: 50,
   },
@@ -194,9 +193,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 7,
     gap: 4,
+    marginHorizontal: 3,
+    borderRadius: 15,
   },
+  tabItemActive: { backgroundColor: '#ECFDF5' },
   tabLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -208,7 +210,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     position: 'relative',
     height: '100%',
-    paddingBottom: 6,
+    paddingBottom: 7,
   },
   orbFloatingWrapper: {
     position: 'absolute',
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
   aiLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#0284C7',
+    color: COLORS.primaryDark,
     marginTop: 34,
   },
 });

@@ -35,8 +35,6 @@ import {
   Thermometer,
   Pill,
   Heart,
-  Volume2,
-  VolumeX,
   PhoneCall,
   Star,
   BedDouble,
@@ -64,7 +62,6 @@ export function HomeScreen() {
   // 📍 User live coordinates (Sector 128, Noida default)
   const { location } = useLiveLocation();
   const { pickupLocation, setPickupLocation, setCurrentScreen, startBookingFlow } = useBookingStore();
-  const [isSirenPlaying, setIsSirenPlaying] = useState(false);
   const [nearbyHospitals, setNearbyHospitals] = useState<Hospital[]>([]);
   const [isPickupModalOpen, setIsPickupModalOpen] = useState(false);
   const [detectingGps, setDetectingGps] = useState(false);
@@ -80,16 +77,6 @@ export function HomeScreen() {
     }
     load();
   }, [pickupLocation]);
-
-  const toggleSirenSound = () => {
-    if (isSirenPlaying) {
-      soundService.stopSiren();
-      setIsSirenPlaying(false);
-    } else {
-      soundService.playEmergencySiren();
-      setIsSirenPlaying(true);
-    }
-  };
 
   const handleSosEmergency = () => {
     soundService.playSonarPing();
@@ -126,21 +113,16 @@ export function HomeScreen() {
           showPickupPuck={true}
         />
 
-        {/* 🚨 Quick Emergency Siren Audio Toggle on Map */}
-        <TouchableOpacity
-          style={[styles.sirenFloatingBtn, isSirenPlaying && styles.sirenFloatingBtnActive]}
-          activeOpacity={0.85}
-          onPress={toggleSirenSound}
-        >
-          {isSirenPlaying ? (
-            <Volume2 size={16} color="#FFFFFF" />
-          ) : (
-            <VolumeX size={16} color={COLORS.textPrimary} />
-          )}
-          <Text style={[styles.sirenBtnText, isSirenPlaying && { color: '#FFFFFF' }]}>
-            {isSirenPlaying ? 'SIREN ON' : 'Siren Audio'}
-          </Text>
-        </TouchableOpacity>
+        {/* Product identity keeps the map feeling like an active care network, not a generic map. */}
+        <View style={styles.mapBrandRow} pointerEvents="none">
+          <View style={styles.brandLockup}>
+            <View style={styles.brandMark}><HeartPulse size={18} color="#FFFFFF" /></View>
+            <View>
+              <Text style={styles.brandName}>SaveLife</Text>
+              <Text style={styles.brandCaption}>EMERGENCY CARE</Text>
+            </View>
+          </View>
+        </View>
 
         {/* 🆘 1-Tap SOS Emergency Dispatch Float */}
         <TouchableOpacity
@@ -152,12 +134,6 @@ export function HomeScreen() {
           <Text style={styles.sosFloatingBtnText}>SOS 112</Text>
         </TouchableOpacity>
 
-        {/* 📡 Live Patrol Telemetry Badge */}
-        <View style={styles.patrolBadge}>
-          <View style={styles.patrolPulseDot} />
-          <Text style={styles.patrolBadgeText}>3 ALS Units in Sector 128</Text>
-        </View>
-        
         {/* 📍 Reverse-Geocoded Sector 128 Address Chip (Tapping opens Pickup Switcher) */}
         <TouchableOpacity
           style={styles.addressChipContainer}
@@ -249,10 +225,19 @@ export function HomeScreen() {
 
         {/* ⚡ Availability Telemetry Header */}
         <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>Emergency Response</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Text style={styles.headerTitle}>Emergency Response</Text>
+            <View style={styles.greenCorridorBadge}>
+              <Radio size={10} color="#15803D" />
+              <Text style={styles.greenCorridorText}>GREEN CORRIDOR ACTIVE</Text>
+            </View>
+          </View>
+
           <View style={styles.availabilityPill}>
             <View style={styles.liveGreenBeacon} />
-            <Text style={styles.availabilityText}>Avg response: <Text style={{ fontWeight: '900' }}>3.4 mins</Text> in Wish Town</Text>
+            <Text style={styles.availabilityText}>
+              Avg response: <Text style={{ fontWeight: '900' }}>3.4 mins</Text> in Sector 128 Wish Town • 3 ALS Units Active
+            </Text>
           </View>
         </View>
 
@@ -283,11 +268,11 @@ export function HomeScreen() {
             onPress={() => setCurrentScreen('hospital_list')}
           >
             <View style={styles.badgeGreen}>
-              <Text style={styles.badgeTextGreen}>18 BEDS LIVE</Text>
+              <Text style={styles.badgeTextGreen}>NEARBY CARE</Text>
             </View>
             <Building2 size={32} color={COLORS.primary} style={styles.cardIcon} />
             <Text style={styles.serviceTitle}>Find{'\n'}Hospital</Text>
-            <Text style={styles.serviceSubtitle}>Live ICU & Doctor Roster</Text>
+            <Text style={styles.serviceSubtitle}>Compare emergency facilities</Text>
             
             <View style={styles.cardCtaRow}>
               <Text style={styles.cardCtaTextGreen}>View Centers ➔</Text>
@@ -298,7 +283,7 @@ export function HomeScreen() {
         {/* 🏷️ Instant Emergency Category Tags (Cardiac, Trauma, Burn, Elderly) */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.subSectionTitle}>Instant Emergency Dispatch</Text>
-          <Text style={styles.subSectionSubtitle}>Pre-configured ICU units</Text>
+          <Text style={styles.subSectionSubtitle}>Choose the help you need</Text>
         </View>
 
         <ScrollView 
@@ -597,35 +582,9 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
   },
-  sirenFloatingBtn: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-    zIndex: 15,
-  },
-  sirenFloatingBtnActive: {
-    backgroundColor: COLORS.alertRed,
-  },
-  sirenBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
   sosFloatingBtn: {
     position: 'absolute',
-    top: 12,
+    top: 68,
     right: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -647,30 +606,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  patrolBadge: {
-    position: 'absolute',
-    top: 48,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    zIndex: 15,
-  },
-  patrolPulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-  },
-  patrolBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
   addressChipContainer: {
     position: 'absolute',
     bottom: 16,
@@ -683,18 +618,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
     width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 8,
     borderWidth: 1,
     borderColor: 'rgba(226, 232, 240, 0.8)',
   },
+  mapBrandRow: {
+    position: 'absolute', top: 14, left: 0, right: 0, alignItems: 'center', zIndex: 16,
+  },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5, paddingLeft: 5, paddingRight: 9, borderRadius: 16, backgroundColor: 'rgba(15, 23, 42, .78)', borderWidth: 1, borderColor: 'rgba(255,255,255,.14)' },
+  brandMark: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.alertRed, shadowColor: COLORS.alertRed, shadowOpacity: .32, shadowRadius: 7, elevation: 5 },
+  brandName: { color: '#FFFFFF', fontSize: 16, fontWeight: '900', textShadowColor: 'rgba(0,0,0,.35)', textShadowRadius: 4 },
+  brandCaption: { color: 'rgba(255,255,255,.86)', fontSize: 8, fontWeight: '800', letterSpacing: .8, marginTop: 1, textShadowColor: 'rgba(0,0,0,.35)', textShadowRadius: 4 },
   greenDotRing: {
     width: 18,
     height: 18,
@@ -730,8 +672,8 @@ const styles = StyleSheet.create({
   bottomSheet: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     marginTop: -16,
     zIndex: 20,
     shadowColor: '#000',
@@ -757,8 +699,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderColor: '#DCE5EB',
     marginHorizontal: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -766,9 +708,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
   },
   searchIcon: {
     marginRight: 10,
@@ -816,8 +758,24 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: '900',
     color: COLORS.textPrimary,
-    marginBottom: 4,
     letterSpacing: -0.3,
+  },
+  greenCorridorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  greenCorridorText: {
+    color: '#15803D',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.4,
   },
   availabilityPill: {
     flexDirection: 'row',
@@ -863,12 +821,12 @@ const styles = StyleSheet.create({
     minHeight: 145,
   },
   emergencyCard: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: '#FFF4F3',
+    borderColor: '#FFD0CC',
   },
   hospitalCard: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FCF7',
+    borderColor: '#C6F0DC',
   },
   cardIcon: {
     marginBottom: 8,

@@ -26,6 +26,7 @@ import {
   UserCheck,
   Clock,
   Navigation,
+  RefreshCw,
 } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { useBookingStore } from '../store/useBookingStore';
@@ -38,20 +39,23 @@ export const HospitalListScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'icu' | 'cardiac' | 'trauma'>('all');
+  const [lastUpdated, setLastUpdated] = useState('Just now');
+
+  const loadHospitals = async () => {
+    setLoading(true);
+    try {
+      const list = await fetchNearbyHospitals(pickupLocation.latitude, pickupLocation.longitude, 8000);
+      setHospitals(list);
+    } catch {
+      setHospitals(getNearbyHospitalsMock(pickupLocation.latitude, pickupLocation.longitude));
+    } finally {
+      setLastUpdated('Just now');
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const list = await fetchNearbyHospitals(pickupLocation.latitude, pickupLocation.longitude, 8000);
-        setHospitals(list);
-      } catch {
-        setHospitals(getNearbyHospitalsMock(pickupLocation.latitude, pickupLocation.longitude));
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    loadHospitals();
   }, [pickupLocation]);
 
   const filteredHospitals = hospitals.filter((h) => {
@@ -81,8 +85,21 @@ export const HospitalListScreen: React.FC = () => {
       <View style={styles.container}>
         {/* 🏢 Header Section */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Emergency Hospital Directory</Text>
-          <Text style={styles.headerSubtitle}>Sector 128, Noida • Verified 24/7 Trauma Centers & ICU Units</Text>
+          <View style={styles.titleRow}>
+            <View>
+              <Text style={styles.headerEyebrow}>CARE NETWORK</Text>
+              <Text style={styles.headerTitle}>Find emergency care</Text>
+            </View>
+            <TouchableOpacity accessibilityLabel="Refresh hospitals" style={styles.refreshButton} onPress={loadHospitals} disabled={loading}>
+              <RefreshCw size={17} color={COLORS.primaryDark} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.headerSubtitle}>Near Sector 128, Noida • Emergency, ICU and specialist care</Text>
+
+          <View style={styles.networkStatus}>
+            <View style={styles.liveDot} />
+            <Text style={styles.networkStatusText}>Availability directory refreshed {lastUpdated}</Text>
+          </View>
 
           {/* 🔍 Search Input Box */}
           <View style={styles.searchBox}>
@@ -154,6 +171,15 @@ export const HospitalListScreen: React.FC = () => {
             <View style={styles.loaderBox}>
               <ActivityIndicator size="small" color={COLORS.primary} />
               <Text style={styles.loaderText}>Fetching live ICU & doctor rosters...</Text>
+            </View>
+          ) : filteredHospitals.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Building2 size={28} color={COLORS.primary} />
+              <Text style={styles.emptyTitle}>No centres match that search</Text>
+              <Text style={styles.emptyCopy}>Try a hospital name, doctor, or specialty such as “cardiac”.</Text>
+              <TouchableOpacity style={styles.resetButton} onPress={() => { setSearchQuery(''); setSelectedFilter('all'); }}>
+                <Text style={styles.resetButtonText}>Show all hospitals</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             filteredHospitals.map((hospital) => (
@@ -267,17 +293,23 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.divider,
     backgroundColor: '#FFFFFF',
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerEyebrow: { fontSize: 10, letterSpacing: 1.2, fontWeight: '800', color: COLORS.primary, marginBottom: 2 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 23,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
+  refreshButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primaryLight, borderWidth: 1, borderColor: '#C7EBDC' },
   headerSubtitle: {
     fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 2,
-    marginBottom: 10,
+    marginBottom: 9,
   },
+  networkStatus: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 11, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 20, backgroundColor: '#EFFBF5' },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.success },
+  networkStatusText: { fontSize: 10, color: COLORS.primaryDark, fontWeight: '700' },
   searchBox: {
     height: 44,
     borderRadius: 22,
@@ -334,6 +366,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
   },
+  emptyState: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 28, backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: COLORS.cardBorder },
+  emptyTitle: { marginTop: 12, fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
+  emptyCopy: { marginTop: 6, textAlign: 'center', fontSize: 12, lineHeight: 18, color: COLORS.textSecondary },
+  resetButton: { marginTop: 18, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, backgroundColor: COLORS.primary },
+  resetButtonText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
   hospitalCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
